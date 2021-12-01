@@ -160,8 +160,6 @@ int read_image_16color(FILE *fp, image_t *image, int width, int height)
 
     memset(image->buf, 0, width * height);
 
-    fseek(fp, 0x990, SEEK_SET);
-
     int x = 0;
     for (int i = 0; i < (width / 8) * height; i++)
     {
@@ -178,9 +176,9 @@ int read_image_16color(FILE *fp, image_t *image, int width, int height)
         for (int j = 0; j < 8; j++)
         {
             pixels[j] = (bit_from_byte(b1, j) << 0) |
-                        (bit_from_byte(b2, (j + 1) % 8) << 1) |
-                        (bit_from_byte(b3, (j + 2) % 8) << 2) |
-                        (bit_from_byte(b4, (j + 3) % 8) << 3);
+                        (bit_from_byte(b2, j) << 1) |
+                        (bit_from_byte(b3, j) << 2) |
+                        (bit_from_byte(b4, j) << 3);
 
             image->buf[x++] = pixels[j];
         }
