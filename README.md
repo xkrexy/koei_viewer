@@ -9,7 +9,7 @@ $ make
 
 # 사용법
 ```sh
-$ ./koei_viewer KAODATAP.S4 64 80 8
+$ ./koei_viewer KAODATAP.S4 SAM4KAO.RGB 64 80 8 1 3 0
 ```
 
 # 스크린샷
