@@ -87,6 +87,32 @@ void init_palette()
     g_palette[15].b = 0x97;
     g_palette[15].g = 0x54;
     g_palette[15].r = 0x20;
+
+    // Horizon KAO (8-Colors)
+    g_palette[0].r = 0x00;
+    g_palette[0].g = 0x00;
+    g_palette[0].b = 0x00;
+    g_palette[1].r = 0x00;
+    g_palette[1].g = 0xA0;
+    g_palette[1].b = 0x60;
+    g_palette[2].r = 0xD0;
+    g_palette[2].g = 0x40;
+    g_palette[2].b = 0x00;
+    g_palette[3].r = 0xF0;
+    g_palette[3].g = 0xA0;
+    g_palette[3].b = 0x60;
+    g_palette[4].r = 0x00;
+    g_palette[4].g = 0x40;
+    g_palette[4].b = 0xD0;
+    g_palette[5].r = 0x00;
+    g_palette[5].g = 0xA0;
+    g_palette[5].b = 0xF0;
+    g_palette[6].r = 0xD0;
+    g_palette[6].g = 0x60;
+    g_palette[6].b = 0xA0;
+    g_palette[7].r = 0xF0;
+    g_palette[7].g = 0xE0;
+    g_palette[7].b = 0xD0;
 }
 
 rgb_t index_to_rgb(int index)
@@ -126,7 +152,11 @@ static int read_image(FILE *fp, image_t *image, int width, int height, int align
         for (int j = 0; j < align_length * BITS_PER_BYTE; j++) {
             image->buf[position] = 0;
             for (int k = 0; k < bpp; k++) {
-                image->buf[position] |= (bit_from_bytes(pixels + (align_length * k), j) << k);
+#ifdef __LEFT_TO_RIGHT
+                image->buf[position] |= (bit_from_bytes(pixels + (align_length * k), j) << (k));
+#else
+                image->buf[position] |= (bit_from_bytes(pixels + (align_length * k), j) << (bpp - k - 1));
+#endif
             }
             position++;
         }
