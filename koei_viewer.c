@@ -18,7 +18,7 @@ void put_pixel(int x, int y, rgb_t rgb)
                  SDL_MapRGB(screenSurface->format, rgb.r, rgb.g, rgb.b));
 }
 
-void redraw(const char *filename, int width, int height, int color_count)
+void redraw(const char *filename, const char *palette, int width, int height, int align_length, int bpp, int left_to_right)
 {
     screenSurface = SDL_GetWindowSurface(window);
     SDL_FillRect(screenSurface, NULL,
@@ -26,30 +26,22 @@ void redraw(const char *filename, int width, int height, int color_count)
 
     int x = 0;
     int y = 0;
-    int image_count = 1; //calc_image_count(filename, width, height);
+    int image_count = calc_image_count(filename, width, height, bpp);
+
+    read_palette(palette);
 
     FILE *fp = fopen(filename, "r");
-
-    init_palette();
 
     for (int index = 0; index < image_count; index++)
     {
         image_t image;
-        if (color_count == 8)
-        {
-            read_image_8color(fp, &image, width, height);
-        }
-        else
-        {
-            read_image_16color(fp, &image, width, height);
-        }
+        read_image(fp, &image, width, height, align_length, bpp, left_to_right);
 
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
-                put_pixel(x + j, y + i,
-                          index_to_rgb(get_index_image(&image, i, j)));
+                put_pixel(x + j, y + i, index_to_rgb(get_index_image(&image, i, j)));
             }
         }
 
@@ -70,9 +62,29 @@ void redraw(const char *filename, int width, int height, int color_count)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 5)
+    if (argc < 8)
     {
-        printf("Usage: %s <image> <width> <height> <color>\n", argv[0]);
+        printf("Usage: %s <image> <palette> <width> <height> <align length> <bpp> <left to right>\n", argv[0]);
+        printf("   ex) %s KAODATA.DAT SAM3KAO.RGB 64 80 1 3 0\n", argv[0]);
+        printf("\n");
+        printf("[Align length / bpp / left to right examples]\n");
+        printf("  - RPGMK\n");
+        printf("    align_length: width * height / 8\n");
+        printf("    bpp: 4\n");
+        printf("    left_to_right: 1\n");
+        printf("  - Sam3 Kao / Sam4 Kao\n");
+        printf("    align_length: 1\n");
+        printf("    bpp: 3\n");
+        printf("    left_to_right: 0\n");
+        printf("  - Horizon2(DH2) Kao\n");
+        printf("    align_length: 1\n");
+        printf("    bpp: 3\n");
+        printf("    left_to_right: 1\n");
+        printf("  - Hero HEXBCHP.000\n");
+        printf("    align_length: 32\n");
+        printf("    bpp: 4\n");
+        printf("\n");
+
         return 0;
     }
 
@@ -82,10 +94,9 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    window =
-        SDL_CreateWindow(argv[0], SDL_WINDOWPOS_UNDEFINED,
-                         SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH * ARG_SCALE,
-                         ARG_WINDOW_HEIGHT * ARG_SCALE, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH * ARG_SCALE,
+                              ARG_WINDOW_HEIGHT * ARG_SCALE, SDL_WINDOW_SHOWN);
     if (window == NULL)
     {
         printf("SDL_CreateWindow error: %s\n", SDL_GetError());
@@ -93,7 +104,7 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    redraw(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
+    redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));
 
     while (SDL_WaitEvent(&event) >= 0)
     {
