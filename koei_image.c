@@ -4,6 +4,8 @@
 #include <string.h>
 #include "koei_image.h"
 
+#define BITS_PER_BYTE (8)
+
 static rgb_t g_palette[16];
 
 void init_palette()
@@ -97,94 +99,52 @@ rgb_t index_to_rgb(int index)
     return (rgb_t){0, 0, 0};
 }
 
-uint8_t bit_from_byte(uint8_t byte, int position)
+uint8_t bit_from_bytes(uint8_t *bytes, int position)
 {
-    return (byte & (0x80 >> position)) >> (7 - position);
+    int byte_index = position / BITS_PER_BYTE;
+    int bit_position = position % BITS_PER_BYTE;
+    return (bytes[byte_index] & (0x80 >> bit_position)) >> (7 - bit_position);
+}
+
+static int read_image(FILE *fp, image_t *image, int width, int height, int align_length, int bpp) {
+    if (!image)
+    {
+        return (-1);
+    }
+
+    image->width = width;
+    image->height = height;
+    image->buf = (uint8_t *)malloc(width * height);
+    memset(image->buf, 0, width * height);
+
+    int position = 0;
+    const int image_raw_size = (width * height * bpp) / BITS_PER_BYTE;
+    for (int i = 0; i < image_raw_size / (align_length * bpp); i++) {
+        uint8_t *pixels = (uint8_t *)malloc(align_length * bpp);
+
+        fread(pixels, 1, align_length * bpp, fp);
+        for (int j = 0; j < align_length * BITS_PER_BYTE; j++) {
+            image->buf[position] = 0;
+            for (int k = 0; k < bpp; k++) {
+                image->buf[position] |= (bit_from_bytes(pixels + (align_length * k), j) << k);
+            }
+            position++;
+        }
+
+        free(pixels);
+    }
+
+    return (0);
 }
 
 int read_image_8color(FILE *fp, image_t *image, int width, int height)
 {
-    uint8_t pixels[8] = {
-        0,
-    };
-
-    if (!image)
-    {
-        return (-1);
-    }
-
-    image->width = width;
-    image->height = height;
-    image->buf = (uint8_t *)malloc(width * height);
-
-    memset(image->buf, 0, width * height);
-
-    int x = 0;
-    for (int i = 0; i < (width / 8) * height; i++)
-    {
-        uint8_t b1 = 0;
-        uint8_t b2 = 0;
-        uint8_t b3 = 0;
-
-        fread(&b1, 1, 1, fp);
-        fread(&b2, 1, 1, fp);
-        fread(&b3, 1, 1, fp);
-
-        for (int j = 0; j < 8; j++)
-        {
-            pixels[j] = (bit_from_byte(b1, j) << 0) |
-                        (bit_from_byte(b2, j) << 1) |
-                        (bit_from_byte(b3, j) << 2);
-
-            image->buf[x++] = pixels[j];
-        }
-    }
-
-    return (0);
+    read_image(fp, image, width, height, 1, 3);
 }
 
 int read_image_16color(FILE *fp, image_t *image, int width, int height)
 {
-    uint8_t pixels[8] = {
-        0,
-    };
-
-    if (!image)
-    {
-        return (-1);
-    }
-
-    image->width = width;
-    image->height = height;
-    image->buf = (uint8_t *)malloc(width * height);
-
-    memset(image->buf, 0, width * height);
-
-    int x = 0;
-    for (int i = 0; i < (width / 8) * height; i++)
-    {
-        uint8_t b1 = 0;
-        uint8_t b2 = 0;
-        uint8_t b3 = 0;
-        uint8_t b4 = 0;
-
-        fread(&b1, 1, 1, fp);
-        fread(&b2, 1, 1, fp);
-        fread(&b3, 1, 1, fp);
-        fread(&b4, 1, 1, fp);
-
-        for (int j = 0; j < 8; j++)
-        {
-            pixels[j] = (bit_from_byte(b1, j) << 0) |
-                        (bit_from_byte(b2, j) << 1) |
-                        (bit_from_byte(b3, j) << 2) |
-                        (bit_from_byte(b4, j) << 3);
-
-            image->buf[x++] = pixels[j];
-        }
-    }
-
-    return (0);
+    read_image(fp, image, width, height, 32, 4);
 }
 
 void free_image(image_t *image)

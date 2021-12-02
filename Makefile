@@ -1,6 +1,6 @@
 KOEI_VIEWER = koei_viewer
 
-LDFLAGS = -lsdl2
+LDFLAGS = -lSDL2
 
 all: $(KOEI_VIEWER)
 
