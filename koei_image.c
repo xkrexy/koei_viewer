@@ -167,6 +167,23 @@ static int read_image(FILE *fp, image_t *image, int width, int height, int align
     return (0);
 }
 
+static int read_image_normal(FILE *fp, image_t *image, int width, int height) {
+    image->width = width;
+    image->height = height;
+    image->buf = (uint8_t *)malloc(width * height);
+    memset(image->buf, 0, width * height);
+
+    int pos = 0;
+    for (int i = 0; i < width * height / 2; i++) {
+        uint8_t b = 0;
+        fread(&b, 1, 1, fp);
+        image->buf[pos++] = (b & 0xf0) >> 4;
+        image->buf[pos++] = (b & 0x0f) >> 0;
+    }
+
+    return 0;
+}
+
 int read_image_8color(FILE *fp, image_t *image, int width, int height)
 {
     read_image(fp, image, width, height, 1, 3);
@@ -174,7 +191,11 @@ int read_image_8color(FILE *fp, image_t *image, int width, int height)
 
 int read_image_16color(FILE *fp, image_t *image, int width, int height)
 {
+    // RPGMK의 경우는 align_length = file_size / 4
+    // 대항해시대2의 경우는 align_length = 32
+    // 영걸전 HEXBCHP/HEXBCHP.000 의 경우는 Size는 16x3584이며 align_length = 32
     read_image(fp, image, width, height, 32, 4);
+    //read_image_normal(fp, image, width, height);
 }
 
 void free_image(image_t *image)
