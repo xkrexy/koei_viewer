@@ -1,7 +1,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
 #include <vector>
 #include "ls11_lib.h"
 
@@ -13,17 +12,17 @@ int		ls11_Encode(const char *inData, int inlen, char *outData, int outlen);
 int 	ls11_bitset(char *out,int data,int type);
 int		ls11_bitout(char *out,int bit);
 
-typedef struct {	//LZ77ˆ——p(1ƒŒƒR[ƒh)
+typedef struct {	//LZ77ï¿½ï¿½ï¿½ï¿½ï¿½p(1ï¿½ï¿½ï¿½Rï¿½[ï¿½h)
 	int point;
 	int count;
 }	LZ;
 
-typedef struct {	//ƒnƒtƒ}ƒ“«‘(1ƒŒƒR[ƒh)
+typedef struct {	//ï¿½nï¿½tï¿½}ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(1ï¿½ï¿½ï¿½Rï¿½[ï¿½h)
 	int no;
 	int count;
 }	DICTIONARY;
 
-typedef union {		//INT•ÏŠ·ƒ{ƒbƒNƒX
+typedef union {		//INTï¿½ÏŠï¿½ï¿½{ï¿½bï¿½Nï¿½X
 	int i;
 	char c[4];
 	unsigned char uc[4];
@@ -32,18 +31,18 @@ typedef union {		//INT•ÏŠ·ƒ{ƒbƒNƒX
 
 LS11OUTPACKHEADER ls11_out_pack_header;
 
-// ‚P‚Â‚ÌLS11ƒtƒ@ƒCƒ‹‚ÉA•¡”‚ÌƒƒP[ƒVƒ‡ƒ“ƒf[ƒ^‚ª“ü‚Á‚Ä‚¢‚éBƒoƒ‰ƒoƒ‰‚Ìƒtƒ@ƒCƒ‹Ëo—Í—p
+// ï¿½Pï¿½Â‚ï¿½LS11ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÉAï¿½ï¿½ï¿½ï¿½ï¿½Ìƒï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Bï¿½oï¿½ï¿½ï¿½oï¿½ï¿½ï¿½Ìƒtï¿½@ï¿½Cï¿½ï¿½ï¿½Ëoï¿½Í—p
 vector<LS11LOCATIONDATA> ls11_out_loc_data_list;
 
-// ƒoƒ‰ƒoƒ‰‚Ìƒtƒ@ƒCƒ‹‚ğ‚»‚ê‚¼‚ê•„†‰»‚µ‚½ƒf[ƒ^•”•ª‚Ì”z—ñB
-vector<vector<byte>> vPackOutDataArray;
+// ï¿½oï¿½ï¿½ï¿½oï¿½ï¿½ï¿½Ìƒtï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê‚¼ï¿½ê•„ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½Ì”zï¿½ï¿½B
+vector<vector<uint8_t>> vPackOutDataArray;
 
 extern int ls11_setPoint;
 extern int ls11_bitPoint;
 
 
 /*///////////////////////////////////////////////////////////////////////////*/
-//LS11ˆ³k
+//LS11ï¿½ï¿½ï¿½k
 int ls11_Encode(const char *inData, int inlen, char *outData, int outlen){
 
 	ls11_setPoint=0;
@@ -55,11 +54,11 @@ int ls11_Encode(const char *inData, int inlen, char *outData, int outlen){
 	int	lzLen;
 	int i;
 
-	/* LZ77ˆ— */
+	/* LZ77ï¿½ï¿½ï¿½ï¿½ */
 	lzLen = inlen;
 	lzRecord = (LZ *)calloc(lzLen , sizeof(LZ));
 	if(lzRecord == NULL ){
-		printf("ƒƒ‚ƒŠ—Ìˆææ“¾ƒGƒ‰[");
+		printf("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìˆï¿½æ“¾ï¿½Gï¿½ï¿½ï¿½[");
 		fflush(stdin); 
 		getchar(); 
 		return -1;
@@ -69,29 +68,29 @@ int ls11_Encode(const char *inData, int inlen, char *outData, int outlen){
 		lzRecord[i].count = (int)(unsigned char)inData[i];
 	}
 
-	/* ƒnƒtƒ}ƒ“«‘ì¬ */
-	for(i=0;i<256;i++){	//‰Šú‰»
+	/* ï¿½nï¿½tï¿½}ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ì¬ */
+	for(i=0;i<256;i++){	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		dict[i].no    = i;
 		dict[i].count = 0;
 	}
 
 	
-	/* ƒtƒ@ƒCƒ‹ƒwƒbƒ_‘‚«‚İ */
+	/* ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½wï¿½bï¿½_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 	outData[0] = 'L';
 	outData[1] = 'S';
 	outData[2] = '1';
 	outData[3] = '1';
 	for(i=0;i<12;i++){	outData[i+4] = 0x00; }				//Padding
-	for(i=0;i<4;i++){	outData[i+0x110] = 0x00; }			//ˆ³kŒãƒf[ƒ^•”ƒTƒCƒY(Œã‚Å“ü‚ê‚é)
+	for(i=0;i<4;i++){	outData[i+0x110] = 0x00; }			//ï¿½ï¿½ï¿½kï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½Tï¿½Cï¿½Y(ï¿½ï¿½Å“ï¿½ï¿½ï¿½ï¿½)
 	len.i = inlen;
-	for(i=0;i<4;i++){	outData[i+0x114] = len.uc[3-i]; }	//ˆ³k‘Oƒf[ƒ^•”ƒTƒCƒY
+	for(i=0;i<4;i++){	outData[i+0x114] = len.uc[3-i]; }	//ï¿½ï¿½ï¿½kï¿½Oï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½Tï¿½Cï¿½Y
 	len.i = 0x120;
-	for(i=0;i<4;i++){	outData[i+0x118] = len.uc[3-i]; }	//ƒf[ƒ^ŠJnˆÊ’u
+	for(i=0;i<4;i++){	outData[i+0x118] = len.uc[3-i]; }	//ï¿½fï¿½[ï¿½^ï¿½Jï¿½nï¿½Ê’u
 	for(i=0;i<4;i++){	outData[i+0x11C] = 0x00; }			//Padding
-	ls11_bitset(" ",0x120,1);	//o—Íæ“ªˆÊ’u•ÏX(0x120)
+	ls11_bitset(NULL,0x120,1);	//ï¿½oï¿½Íæ“ªï¿½Ê’uï¿½ÏX(0x120)
 
 
-	/* ƒnƒtƒ}ƒ“o—Íˆ— */
+	/* ï¿½nï¿½tï¿½}ï¿½ï¿½ï¿½oï¿½Íï¿½ï¿½ï¿½ */
 	for(i=0;i<lzLen;i++){
 		if(lzRecord[i].point){
 			ls11_bitset(outData,(lzRecord[i].point +256),0);
@@ -99,22 +98,22 @@ int ls11_Encode(const char *inData, int inlen, char *outData, int outlen){
 		ls11_bitset(outData,dict[lzRecord[i].count].no,0);
 	}
 	free(lzRecord);
-	outlen = ls11_bitset(" ",0,2);
-	if(ls11_bitset(" ",0,4)){ outlen++; }
+	outlen = ls11_bitset(NULL,0,2);
+	if(ls11_bitset(NULL,0,4)){ outlen++; }
 
-	/* “WŠJ—pƒnƒtƒ}ƒ“«‘ì¬ */
+	/* ï¿½Wï¿½Jï¿½pï¿½nï¿½tï¿½}ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ì¬ */
 	for(i=0;i<256;i++){	
 		dict[i].count = dict[i].no;
 		dict[i].no    = i;
 	}
 
-	//	printf("«‘ƒe[ƒuƒ‹\n");
+	//	printf("ï¿½ï¿½ï¿½ï¿½ï¿½eï¿½[ï¿½uï¿½ï¿½\n");
 //	for(i=0;i<256;i++){printf("%02X ",dict[i].no);if(i%16==15)printf("\n");}
 
-	/* ƒtƒ@ƒCƒ‹ƒwƒbƒ_‘‚«‚İ */
-	for(i=0;i<256;i++){ outData[i+0x10] = dict[i].no; }			//«‘
+	/* ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½wï¿½bï¿½_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+	for(i=0;i<256;i++){ outData[i+0x10] = dict[i].no; }			//ï¿½ï¿½ï¿½ï¿½
 	len.i = outlen - 0x120;
-	for(i=0;i<4;i++){	outData[i+0x110] = len.uc[3-i];}		//ˆ³kŒãƒf[ƒ^•”ƒTƒCƒY
+	for(i=0;i<4;i++){	outData[i+0x110] = len.uc[3-i];}		//ï¿½ï¿½ï¿½kï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½Tï¿½Cï¿½Y
 
 	return outlen;
 }
@@ -122,23 +121,23 @@ int ls11_Encode(const char *inData, int inlen, char *outData, int outlen){
 int ls11_setPoint = 0;
 int ls11_bitPoint = 0;
 
-/* ƒnƒtƒ}ƒ“o—Íˆ— */
+/* ï¿½nï¿½tï¿½}ï¿½ï¿½ï¿½oï¿½Íï¿½ï¿½ï¿½ */
 int ls11_bitset(char *out,int data,int type){
 
-	unsigned int MASK = 0x02;	//ƒ}ƒXƒN
-	unsigned int m_count = 0;	//‘Obit’·‚³
+	unsigned int MASK = 0x02;	//ï¿½}ï¿½Xï¿½N
+	unsigned int m_count = 0;	//ï¿½Obitï¿½ï¿½ï¿½ï¿½
 	unsigned int num;
 	int i;
 
-	/* î•ñİ’è */
+	/* ï¿½ï¿½ï¿½İ’ï¿½ */
 	if(type){
 		switch(type){
 
-			case 1:	ls11_setPoint = data;	//o—Í•¶šˆÊ’uİ’è
+			case 1:	ls11_setPoint = data;	//ï¿½oï¿½Í•ï¿½ï¿½ï¿½ï¿½Ê’uï¿½İ’ï¿½
 			case 2:	return ls11_setPoint;
 					break;
 
-			case 3:	if(data > 8){data = 0;}	//o—ÍƒrƒbƒgˆÊ’uİ’è
+			case 3:	if(data > 8){data = 0;}	//ï¿½oï¿½Íƒrï¿½bï¿½gï¿½Ê’uï¿½İ’ï¿½
 					ls11_bitPoint = data;
 			case 4:	return ls11_bitPoint;
 					break;
@@ -147,16 +146,16 @@ int ls11_bitset(char *out,int data,int type){
 		}
 	}
 
-	/* ƒrƒbƒgo—Íˆ— */
+	/* ï¿½rï¿½bï¿½gï¿½oï¿½Íï¿½ï¿½ï¿½ */
 	num = (unsigned int)data;
-	while(num >= ((MASK << (m_count +1)) -2) ){	//ƒrƒbƒg’·Zo
+	while(num >= ((MASK << (m_count +1)) -2) ){	//ï¿½rï¿½bï¿½gï¿½ï¿½ï¿½Zï¿½o
 		m_count++;
 	}
 //	printf("m_count:%d |num:%d ",m_count,num);
 	num = num - ((MASK << m_count) -2);
 //	printf("- %d = %d\n",(MASK << m_count) -2,num);
 
-	for(i=m_count;i>=0;i--){	//ã•”o—Í
+	for(i=m_count;i>=0;i--){	//ï¿½ã•”ï¿½oï¿½ï¿½
 //		printf("%d|%03d|",ls11_setPoint,(0x80 >> ls11_bitPoint));
 		if(i){	ls11_bitout(&out[ls11_setPoint],ls11_bitPoint);}
 //		else{printf("\n");}
@@ -166,7 +165,7 @@ int ls11_bitset(char *out,int data,int type){
 			ls11_bitPoint = 0;
 		}
 	}
-	for(i=m_count;i>=0;i--){ //‰º•”o—Í
+	for(i=m_count;i>=0;i--){ //ï¿½ï¿½ï¿½ï¿½ï¿½oï¿½ï¿½
 //		printf("%d|%03d|",ls11_setPoint,(0x80 >> ls11_bitPoint));
 		if( num & (0x1 << i)){	ls11_bitout(&out[ls11_setPoint],ls11_bitPoint);}
 //		else{printf("\n");}
@@ -179,7 +178,7 @@ int ls11_bitset(char *out,int data,int type){
 	return 0;
 }
 
-/* ƒrƒbƒgo—Í‘€ì(“n‚³‚ê‚½char‚Ìw’èƒrƒbƒg‚ğ—§‚Ä‚é) */
+/* ï¿½rï¿½bï¿½gï¿½oï¿½Í‘ï¿½ï¿½ï¿½(ï¿½nï¿½ï¿½ï¿½ê‚½charï¿½Ìwï¿½ï¿½rï¿½bï¿½gï¿½ğ—§‚Ä‚ï¿½) */
 int ls11_bitout(char *out,int bit){
 
 	unsigned char ch=0x80;

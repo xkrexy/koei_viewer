@@ -1,6 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include <direct.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,17 +10,17 @@
 using namespace std;
 
 
-int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<byte>> *pvecSrcDataArray, vector<byte> *pDstLS11PackedData) {
+int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<uint8_t>> *pvecSrcDataArray, vector<uint8_t> *pDstLS11PackedData) {
 
 	ls11_out_loc_data_list.clear();
 	vPackOutDataArray.clear();
 
-	// ƒoƒ‰ƒoƒ‰‚Ì‚»‚ê‚¼‚ê‚Ì–¼‘O
+	// ï¿½oï¿½ï¿½ï¿½oï¿½ï¿½ï¿½Ì‚ï¿½ï¿½ê‚¼ï¿½ï¿½Ì–ï¿½ï¿½O
 	char szCurFileName[256] = "";
 
-	// ƒtƒ@ƒCƒ‹‚ğ’T‚·B
+	// ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Tï¿½ï¿½ï¿½B
 	for ( int iNo=0; iNo<3000; iNo++ ) {
-		sprintf_s(szCurFileName, "%s/%s.%03d", szInputPattern, szInputPattern, iNo );
+		sprintf(szCurFileName, "%s/%s.%03d", szInputPattern, szInputPattern, iNo );
 
 		int iTargetFileSize=0;
 		int iKeepableMemSize=0;
@@ -30,23 +29,23 @@ int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<
 		char *inData=NULL;
 		char *outData=NULL;
 		/*
-		printf("“ü—Íƒtƒ@ƒCƒ‹–¼:");
+		printf("ï¿½ï¿½ï¿½Íƒtï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½:");
 		scanf("%s",input);
-		printf("o—Íƒtƒ@ƒCƒ‹–¼:");
+		printf("ï¿½oï¿½Íƒtï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½:");
 		scanf("%s",output);
 		*/
-		// ƒtƒ@ƒCƒ‹‚Ìê‡
+		// ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìê‡
 		if ( !pvecSrcDataArray && szInputPattern )  {
-			/* ƒtƒ@ƒCƒ‹ƒTƒCƒYæ“¾ */
+			/* ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Tï¿½Cï¿½Yï¿½æ“¾ */
 			iInputFileSize = ls11_getFileSize(szCurFileName);
 			if(iInputFileSize < 0){
 				//fflush(stdin);
-				// ƒtƒ@ƒCƒ‹‚ªI—¹‚µ‚½B
+				// ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B
 				break;
 			}
 			inData = (char *)calloc(iInputFileSize , sizeof(char));
 			if(inData == NULL ){
-				//printf("ƒƒ‚ƒŠ—Ìˆææ“¾ƒGƒ‰[\n");
+				//printf("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìˆï¿½æ“¾ï¿½Gï¿½ï¿½ï¿½[\n");
 				//fflush(stdin); 
 				return -1;
 			}
@@ -56,7 +55,7 @@ int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<
 				//fflush(stdin);
 				return -1;
 			}
-			// Vector‚Ìê‡
+			// Vectorï¿½Ìê‡
 		} else if (pvecSrcDataArray) {
 			if ( iNo >= (int)(*pvecSrcDataArray).size() ) { break; }
 			iInputFileSize = (*pvecSrcDataArray)[iNo].size();
@@ -70,7 +69,7 @@ int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<
 		outData = (char *)calloc(iKeepableMemSize, sizeof(char));
 		if(outData == NULL ){
 			free(inData);
-			//printf("ƒƒ‚ƒŠ—Ìˆææ“¾ƒGƒ‰[\n");
+			//printf("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìˆï¿½æ“¾ï¿½Gï¿½ï¿½ï¿½[\n");
 			//fflush(stdin); 
 			return -1;
 		}
@@ -79,43 +78,43 @@ int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<
 		free(inData); // malloc
 
 		if(iOutputFileSize < 0){
-			// printf("ƒGƒ“ƒR[ƒh¸”s:%d\n",fsize3);
+			// printf("ï¿½Gï¿½ï¿½ï¿½Rï¿½[ï¿½hï¿½ï¿½ï¿½s:%d\n",fsize3);
 			free(outData);
 			//fflush(stdin); 
 			return -1;
 		}
-		// ƒwƒbƒ_[•”•ª‚ğƒRƒs[(‚±‚ê‚Í‚¶‚Â‚ÍAƒtƒ@ƒCƒ‹‚ª•Ï‚í‚Á‚Ä‚àŒÅ’è“I)
+		// ï¿½wï¿½bï¿½_ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½sï¿½[(ï¿½ï¿½ï¿½ï¿½Í‚ï¿½ï¿½Â‚ÍAï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½Å’ï¿½I)
 		memcpy( &ls11_out_pack_header.header, outData, sizeof(ls11_out_pack_header.header));
 
-		// ƒƒP[ƒVƒ‡ƒ“‚Ì•”•ª‚ğƒRƒs[(ƒAƒfƒBƒVƒ‡ƒ“)
+		// ï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½sï¿½[(ï¿½Aï¿½fï¿½Bï¿½Vï¿½ï¿½ï¿½ï¿½)
 		LS11LOCATIONDATA *p_cur_loc_data = (LS11LOCATIONDATA *)(char *)(outData+0x110);
-		// ‚Í‚¶‚ß‚Ä‚È‚ç‚ÎA‚»‚Ì‚Ü‚Ü‘«‚·‚¾‚¯B
+		// ï¿½Í‚ï¿½ï¿½ß‚Ä‚È‚ï¿½ÎAï¿½ï¿½ï¿½Ì‚Ü‚Ü‘ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B
 		ls11_out_loc_data_list.push_back( *p_cur_loc_data );
 
-		// ƒf[ƒ^•”•ª‚ğˆê‹C‚ÉƒRƒs[
-		vector<byte> vCurLS11Buf(&outData[0x120], &outData[iOutputFileSize]);
+		// ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cï¿½ÉƒRï¿½sï¿½[
+		vector<uint8_t> vCurLS11Buf(&outData[0x120], &outData[iOutputFileSize]);
 		vPackOutDataArray.push_back(vCurLS11Buf);
 
-		// —p‚ªÏ‚ñ‚¾‚Ì‚Å‰ğ•úBŸ‚ÌƒpƒbƒN•ªŠ„ƒtƒ@ƒCƒ‹‚Ö
+		// ï¿½pï¿½ï¿½ï¿½Ï‚ñ‚¾‚Ì‚Å‰ï¿½ï¿½ï¿½Bï¿½ï¿½ï¿½Ìƒpï¿½bï¿½Nï¿½ï¿½ï¿½ï¿½ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½
 		free(outData);
 	}
 
-	// ÅŒã‚É ls11_out_loc_data_list ‚Ìˆê”ÔÅ‰‚ÌƒAƒhƒŒƒX‚ªŠÔˆá‚Á‚Ä‚¢‚é‚Ì‚ÅAÅ‰‚ÌƒAƒhƒŒƒX‚ğC³‚µA‚»‚ê‚ÉŠî‚Ã‚¢‚Ä‘S‚Ä‚ÌƒAƒhƒŒƒX‚ğC³‚·‚é•K—v‚ª‚ ‚éB
+	// ï¿½ÅŒï¿½ï¿½ ls11_out_loc_data_list ï¿½Ìˆï¿½ÔÅï¿½ï¿½ÌƒAï¿½hï¿½ï¿½ï¿½Xï¿½ï¿½ï¿½Ôˆï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Ì‚ÅAï¿½Åï¿½ï¿½ÌƒAï¿½hï¿½ï¿½ï¿½Xï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½ÉŠï¿½Ã‚ï¿½ï¿½Ä‘Sï¿½Ä‚ÌƒAï¿½hï¿½ï¿½ï¿½Xï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Kï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B
 	for ( int loc=0; loc < (int)ls11_out_loc_data_list.size(); loc++ ) {
 		if ( loc==0 ) {
-			ls11_out_loc_data_list[0].iStartAddress = ls11_ChangeEndian(0x110 + 12*ls11_out_loc_data_list.size() + 4); // •¡”‚ÌƒƒP[ƒVƒ‡ƒ“ƒf[ƒ^‚ªƒpƒbƒN‚³‚ê‚Ä‚é‚Ì‚ÅA1‚Â–Ú‚ÌˆÊ’u‚à•Ï‰»‚·‚éB
+			ls11_out_loc_data_list[0].iStartAddress = ls11_ChangeEndian(0x110 + 12*ls11_out_loc_data_list.size() + 4); // ï¿½ï¿½ï¿½ï¿½ï¿½Ìƒï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½pï¿½bï¿½Nï¿½ï¿½ï¿½ï¿½Ä‚ï¿½Ì‚ÅA1ï¿½Â–Ú‚ÌˆÊ’uï¿½ï¿½ï¿½Ï‰ï¿½ï¿½ï¿½ï¿½ï¿½B
 		} else {
-			// ‚P‚Â‘O‚ÌƒAƒhƒŒƒX{‚P‚Â‘O‚Ì’·‚³
-			// Œ³ƒf[ƒ^‚ªƒrƒbƒOƒGƒ“ƒfƒBƒAƒ“‚È‚Ì‚ÅAƒŠƒgƒ‹ƒGƒ“ƒfƒBƒAƒ“‚É‚µ‚ÄAŒvZB
+			// ï¿½Pï¿½Â‘Oï¿½ÌƒAï¿½hï¿½ï¿½ï¿½Xï¿½{ï¿½Pï¿½Â‘Oï¿½Ì’ï¿½ï¿½ï¿½
+			// ï¿½ï¿½ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½rï¿½bï¿½Oï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½È‚Ì‚ÅAï¿½ï¿½ï¿½gï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½É‚ï¿½ï¿½ÄAï¿½vï¿½Zï¿½B
 			int iStartAddress = ls11_ChangeEndian(ls11_out_loc_data_list[loc-1].iStartAddress) + ls11_ChangeEndian(ls11_out_loc_data_list[loc-1].iDataLenSize);
-			// ƒŠƒgƒ‹ƒGƒ“ƒfƒBƒAƒ“‚ğƒrƒbƒOƒGƒ“ƒfƒBƒAƒ“‚É–ß‚·
+			// ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½rï¿½bï¿½Oï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½É–ß‚ï¿½
 			iStartAddress = ls11_ChangeEndian( iStartAddress );
 			ls11_out_loc_data_list[loc].iStartAddress = iStartAddress;
 		}
 	}
 
 	if ( pDstLS11PackedData ) {
-		// ˆêƒoƒbƒtƒ@‚ğ‚Ç‚Ì‚®‚ç‚¢Šm•Û‚·‚é‚Ì‚©ŒvZ
+		// ï¿½êï¿½oï¿½bï¿½tï¿½@ï¿½ï¿½ï¿½Ç‚Ì‚ï¿½ï¿½ç‚¢ï¿½mï¿½Û‚ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½vï¿½Z
 		char *tmpBuf = NULL;
 		int iCntBufSize = 0;
 		for (int loc=0; loc<(int)ls11_out_loc_data_list.size(); loc++ ) {
@@ -128,52 +127,52 @@ int ls11_EncodePack(char *szOutputFileName, char *szInputPattern, vector<vector<
 
 		char *pTmpBuf = tmpBuf;
 
-		// ƒwƒbƒ_[{«‘‘‚«‚İ
+		// ï¿½wï¿½bï¿½_ï¿½[ï¿½{ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		memcpy( pTmpBuf, (char *)ls11_out_pack_header.header, sizeof(ls11_out_pack_header.header) );
 		pTmpBuf += sizeof(ls11_out_pack_header.header);
 
-		// ƒƒP[ƒVƒ‡ƒ“ŠÖ˜A‘‚«‚İ
+		// ï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Ö˜Aï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (int loc=0; loc<(int)ls11_out_loc_data_list.size(); loc++ ) {
 			memcpy( pTmpBuf, (char *)(char *)&ls11_out_loc_data_list[loc].iDataLenSize, 12 );
 			pTmpBuf += 12;
 		}
-		// ƒƒP[ƒVƒ‡ƒ“I—¹‚Ì‚O‘‚«‚İB‚SƒoƒCƒg(int ‚P‚Â•ª)
+		// ï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½Ì‚Oï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İBï¿½Sï¿½oï¿½Cï¿½g(int ï¿½Pï¿½Â•ï¿½)
 		int iEnd = 0;
 		memcpy( pTmpBuf, (char *)&iEnd, 4 );
 		pTmpBuf += 4;
 
-		// ƒf[ƒ^•”•ª‘‚«‚İ
+		// ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (int buf=0; buf<(int)vPackOutDataArray.size(); buf++ ) {
 			memcpy( pTmpBuf, (char *)&vPackOutDataArray[buf][0], vPackOutDataArray[buf].size() );
 			pTmpBuf += vPackOutDataArray[buf].size();
 		}
 
-		// ‚»‚ê‚ğ“n‚³‚ê‚½ˆø”‚ÌpDstLS11PackedData‚É”½‰f
+		// ï¿½ï¿½ï¿½ï¿½ï¿½nï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½pDstLS11PackedDataï¿½É”ï¿½ï¿½f
 		int cpysize =  (int)pTmpBuf-(int)tmpBuf;
 		(*pDstLS11PackedData).resize( cpysize );
 		memcpy( (char *)&(*pDstLS11PackedData)[0], tmpBuf, cpysize );
 
-		// ˆêƒoƒbƒtƒ@‚Ì‰ğ•ú
+		// ï¿½êï¿½oï¿½bï¿½tï¿½@ï¿½Ì‰ï¿½ï¿½
 		free(tmpBuf);
 	}
 
 	if ( szOutputFileName ) {
 
-		// ƒoƒCƒiƒŠ‚ÅƒI[ƒvƒ“
+		// ï¿½oï¿½Cï¿½iï¿½ï¿½ï¿½ÅƒIï¿½[ï¿½vï¿½ï¿½
 		FILE *fp = fopen(szOutputFileName, "wb");
 
-		// ƒwƒbƒ_[{«‘‘‚«‚İ
+		// ï¿½wï¿½bï¿½_ï¿½[ï¿½{ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		fwrite( (char *)ls11_out_pack_header.header, sizeof(ls11_out_pack_header.header), 1, fp);
 
-		// ƒƒP[ƒVƒ‡ƒ“ŠÖ˜A‘‚«‚İ
+		// ï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Ö˜Aï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (int loc=0; loc<(int)ls11_out_loc_data_list.size(); loc++ ) {
 			fwrite( (char *)&ls11_out_loc_data_list[loc].iDataLenSize, 12, 1, fp);
 		}
-		// ƒƒP[ƒVƒ‡ƒ“I—¹‚Ì‚O‘‚«‚İB‚SƒoƒCƒg(int ‚P‚Â•ª)
+		// ï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½Ì‚Oï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İBï¿½Sï¿½oï¿½Cï¿½g(int ï¿½Pï¿½Â•ï¿½)
 		int iEnd = 0;
 		fwrite( (char *)&iEnd, 4, 1, fp );
 
-		// ƒf[ƒ^•”•ª‘‚«‚İ
+		// ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		for (int buf=0; buf<(int)vPackOutDataArray.size(); buf++ ) {
 			fwrite( (char *)&vPackOutDataArray[buf][0], vPackOutDataArray[buf].size(), 1, fp );
 		}

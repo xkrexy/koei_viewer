@@ -5,7 +5,7 @@
 
 const int ARG_WINDOW_WIDTH = 640;
 const int ARG_WINDOW_HEIGHT = 400;
-const int ARG_SCALE = 3;
+const int ARG_SCALE = 1;
 
 SDL_Window *window = NULL;
 SDL_Surface *screenSurface = NULL;

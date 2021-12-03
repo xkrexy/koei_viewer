@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
 #include <vector>
 
 #include "ls11_lib.h"
@@ -17,7 +16,7 @@ LS11ONEDATA ls11_onedata;
 
 
 
-// ƒrƒbƒOƒGƒ“ƒfƒBƒAƒ“ÌƒŠƒgƒ‹ƒGƒ“ƒfƒBƒAƒ“
+// ï¿½rï¿½bï¿½Oï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½Ìƒï¿½ï¿½gï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½
 int ls11_ChangeEndian(int iCng) {
 	iCng = iCng<<24 | iCng<<8 & 0x00ff0000 | iCng>>8 & 0x0000ff00 | iCng>>24 & 0x000000ff;
 	return iCng;
@@ -25,28 +24,28 @@ int ls11_ChangeEndian(int iCng) {
 
 
 int ls11_memLocationDataArray(const char *inData, int inlen) {
-	if(strncmp(inData,"LS11",4)){	/* ƒwƒbƒ_’²¸ */
-		printf("ƒtƒ@ƒCƒ‹ƒwƒbƒ_[‚ªˆá‚¢‚Ü‚·B\n");
+	if(strncmp(inData,"LS11",4)){	/* ï¿½wï¿½bï¿½_ï¿½ï¿½ï¿½ï¿½ */
+		printf("ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½wï¿½bï¿½_ï¿½[ï¿½ï¿½ï¿½á‚¢ï¿½Ü‚ï¿½ï¿½B\n");
 		return -1;
 	};
 
-	ls11_location_data_list.clear(); // ‚·‚×‚ÄƒNƒŠƒA
+	ls11_location_data_list.clear(); // ï¿½ï¿½ï¿½×‚ÄƒNï¿½ï¿½ï¿½A
 
 	LS11LOCATIONDATA *pLS11SizeData;
 
 	LS11LOCATIONDATA curLS11SizeData;
 
-	// ‚Ü‚Ÿ3000ŒÂˆÈã•ªŠ„‚³‚ê‚Ü‚¢“I‚ÈŠ´‚¶‚ÅB
-	for (pLS11SizeData = (LS11LOCATIONDATA *)(char *)(inData+0x110); // 0x110‚ÌƒXƒ^[ƒgˆÊ’u‚©‚çA
-		 pLS11SizeData->iDataLenSize;								 // ƒf[ƒ^’·‚ª‚O‚Å‚È‚¢‚Æw’è‚³‚ê‚Ä‚¢‚éB
+	// ï¿½Ü‚ï¿½3000ï¿½ÂˆÈã•ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½Iï¿½ÈŠï¿½ï¿½ï¿½ï¿½ÅB
+	for (pLS11SizeData = (LS11LOCATIONDATA *)(char *)(inData+0x110); // 0x110ï¿½ÌƒXï¿½^ï¿½[ï¿½gï¿½Ê’uï¿½ï¿½ï¿½ï¿½A
+		 pLS11SizeData->iDataLenSize;								 // ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½ï¿½Oï¿½Å‚È‚ï¿½ï¿½Æwï¿½è‚³ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½B
 		 pLS11SizeData++) {
 
-		// ‚»‚ê‚¼‚ê‚ğƒrƒbƒOƒGƒ“ƒfƒBƒAƒ“ËƒŠƒgƒ‹ƒGƒ“ƒfƒBƒAƒ“‚É‚µ‚ÄŠi”[
+		// ï¿½ï¿½ï¿½ê‚¼ï¿½ï¿½ï¿½ï¿½rï¿½bï¿½Oï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½Ëƒï¿½ï¿½gï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½fï¿½Bï¿½Aï¿½ï¿½ï¿½É‚ï¿½ï¿½ÄŠiï¿½[
 		curLS11SizeData.iDataLenSize  = ls11_ChangeEndian( pLS11SizeData->iDataLenSize );
 		curLS11SizeData.iExpandedSize = ls11_ChangeEndian( pLS11SizeData->iExpandedSize );
 		curLS11SizeData.iStartAddress = ls11_ChangeEndian( pLS11SizeData->iStartAddress );
 
-		// ƒŠƒXƒg‚É’Ç‰Á
+		// ï¿½ï¿½ï¿½Xï¿½gï¿½É’Ç‰ï¿½
 		ls11_location_data_list.push_back( curLS11SizeData );
 
 	}
@@ -57,26 +56,26 @@ int ls11_memLocationDataArray(const char *inData, int inlen) {
 extern int ls11_bit;
 extern int ls11_byte;
 
-//LS11L’£
+//LS11ï¿½Lï¿½ï¿½
 int		ls11_Decode(const char *inData, int inlen, char *outData, int outlen){
 	
 	ls11_bit = 0;
 	ls11_byte = 0;
 
-	char	dict[256]  = "";		/* «‘ */
-	int		dataSize   = 0;			/* ƒf[ƒ^•”ƒTƒCƒY */
-	int		writePoint = 0;			/* ‘‚«‚İˆÊ’u */
-	int		serchPoint = 0;			/* ƒRƒs[Œ³æ“ªˆÊ’u */
-	int		i,j,k;					/* ì‹Æ—p */
-	int		bitcount = 0;			/* “Ç‚İæ‚èƒrƒbƒg” */
-	int		tempNum = 0;			/* ”’l“Ç‚İæ‚èæ */
-	int		checkNum = 0;			/* «‘orƒRƒs[‚Ì”»’è—p */
-	int 	isGet1 = TRUE;			/* “Ç‚İæ‚èˆ—”»•Ê */
-	int		isLz   = FALSE;			/* ƒRƒs[ˆ—’†‚© */
+	char	dict[256]  = "";		/* ï¿½ï¿½ï¿½ï¿½ */
+	int		dataSize   = 0;			/* ï¿½fï¿½[ï¿½^ï¿½ï¿½ï¿½Tï¿½Cï¿½Y */
+	int		writePoint = 0;			/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İˆÊ’u */
+	int		serchPoint = 0;			/* ï¿½Rï¿½sï¿½[ï¿½ï¿½ï¿½æ“ªï¿½Ê’u */
+	int		i,j,k;					/* ï¿½ï¿½Æ—p */
+	int		bitcount = 0;			/* ï¿½Ç‚İï¿½ï¿½rï¿½bï¿½gï¿½ï¿½ */
+	int		tempNum = 0;			/* ï¿½ï¿½ï¿½lï¿½Ç‚İï¿½ï¿½ï¿½ */
+	int		checkNum = 0;			/* ï¿½ï¿½ï¿½ï¿½orï¿½Rï¿½sï¿½[ï¿½Ì”ï¿½ï¿½ï¿½p */
+	int 	isGet1 = TRUE;			/* ï¿½Ç‚İï¿½èˆï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+	int		isLz   = FALSE;			/* ï¿½Rï¿½sï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 
 
-	if(strncmp(inData,"LS11",4)){	/* ƒwƒbƒ_’²¸ */
-		//printf("ƒtƒ@ƒCƒ‹ƒwƒbƒ_[‚ªˆá‚¢‚Ü‚·B");
+	if(strncmp(inData,"LS11",4)){	/* ï¿½wï¿½bï¿½_ï¿½ï¿½ï¿½ï¿½ */
+		//printf("ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½wï¿½bï¿½_ï¿½[ï¿½ï¿½ï¿½á‚¢ï¿½Ü‚ï¿½ï¿½B");
 		return -1;
 	}
 
@@ -84,10 +83,10 @@ int		ls11_Decode(const char *inData, int inlen, char *outData, int outlen){
 		dict[i] = inData[0x10+i];
 //		printf("%02X ",(unsigned char)dict[i]);
 //		if(i%16 == 15){printf("\n");}
-	}	/* «‘“o˜^ */
+	}	/* ï¿½ï¿½ï¿½ï¿½ï¿½oï¿½^ */
 
 
-	/* ƒoƒCƒgo—ÍˆÊ’uİ’è(0x120~) */
+	/* ï¿½oï¿½Cï¿½gï¿½oï¿½ÍˆÊ’uï¿½İ’ï¿½(0x120~) */
 	ls11_getBit((const char*)0,1);
 	ls11_getBit((const char*)0,2);
 	ls11_getBit((const char*)255,2);
@@ -99,7 +98,7 @@ int		ls11_Decode(const char *inData, int inlen, char *outData, int outlen){
 	for(i=0x120;i<inlen;i++){
 		for(j=0;j<8;j++){
 			tempNum = tempNum << 1;
-			if(isGet1){	/* ‘O‚Ìƒrƒbƒg‚ğæ“¾ */
+			if(isGet1){	/* ï¿½Oï¿½Ìƒrï¿½bï¿½gï¿½ï¿½ï¿½æ“¾ */
 				bitcount++;
 				if(	ls11_getBit(inData,0) ){
 					tempNum++;
@@ -109,7 +108,7 @@ int		ls11_Decode(const char *inData, int inlen, char *outData, int outlen){
 					tempNum = 0;
 				}
 				continue;
-			}else{	/* Œã‚ë‚Ìƒrƒbƒg‚ğæ“¾ */
+			}else{	/* ï¿½ï¿½ï¿½Ìƒrï¿½bï¿½gï¿½ï¿½ï¿½æ“¾ */
 				bitcount--;
 				if( ls11_getBit(inData,0) ){ tempNum++;}
 				if(bitcount>0){	continue;}
@@ -118,29 +117,29 @@ int		ls11_Decode(const char *inData, int inlen, char *outData, int outlen){
 			tempNum   = 0;
 			isGet1 = TRUE;
 
-			if(isLz){	/* LZ«‘ˆ—’† */
+			if(isLz){	/* LZï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 				checkNum += 3;
 				for(k=0;k<checkNum;k++){
 					outData[writePoint] = (unsigned char)outData[serchPoint];
 					writePoint++;
 					serchPoint++;
-					if(writePoint>outlen+50000){ // š‚±‚±‚Í‚Í‚İo‚·‚±‚Æ‚ª‚ ‚é‚Ì‚ÅAƒpƒbƒ`
+					if(writePoint>outlen+50000){ // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í‚Í‚İoï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ÅAï¿½pï¿½bï¿½`
 						return -2;
 					}
 				}
 				isLz = FALSE;
-			}else{		/* «‘ˆ—”»•Ê */
+			}else{		/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 				if(checkNum == 256){
-					return -3;	/* QÆˆÊ’uƒGƒ‰[ */
+					return -3;	/* ï¿½Qï¿½ÆˆÊ’uï¿½Gï¿½ï¿½ï¿½[ */
 				}
-				if(checkNum < 256){	/* –{«‘ */
+				if(checkNum < 256){	/* ï¿½{ï¿½ï¿½ï¿½ï¿½ */
 					outData[writePoint] = dict[checkNum];
 					writePoint++;
 					if(writePoint>outlen){
 						return outlen; 
 					}
 					
-				}else{	/* LZ«‘ˆ— */
+				}else{	/* LZï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 					serchPoint = writePoint - (checkNum - 256);
 					if(inData-serchPoint<0){
 						printf("err");return -5;
@@ -158,11 +157,11 @@ int ls11_byte = 0;
 
 int	ls11_getBit(const char *inData, int type){
 
-	/*	type0 Ÿ‚Ìƒrƒbƒg‚ğo—Í
-		type1 o—Íƒrƒbƒg‚ğİ’è(0:ƒŠƒZƒbƒg) inDaga[1~7]:‰ÁZ [8~255]:ƒŠƒZƒbƒg
-		type2 o—ÍƒoƒCƒg‚ğİ’è(0:ƒŠƒZƒbƒg) inData[1~255]:‰ÁZ
-		type3 ‰½ƒrƒbƒg–Ú‚©‚ğo—Í
-		tyoe4 ‰½ƒoƒCƒg–Ú‚©‚ğo—Í
+	/*	type0 ï¿½ï¿½ï¿½Ìƒrï¿½bï¿½gï¿½ï¿½ï¿½oï¿½ï¿½
+		type1 ï¿½oï¿½Íƒrï¿½bï¿½gï¿½ï¿½İ’ï¿½(0:ï¿½ï¿½ï¿½Zï¿½bï¿½g) inDaga[1~7]:ï¿½ï¿½ï¿½Z [8~255]:ï¿½ï¿½ï¿½Zï¿½bï¿½g
+		type2 ï¿½oï¿½Íƒoï¿½Cï¿½gï¿½ï¿½İ’ï¿½(0:ï¿½ï¿½ï¿½Zï¿½bï¿½g) inData[1~255]:ï¿½ï¿½ï¿½Z
+		type3 ï¿½ï¿½ï¿½rï¿½bï¿½gï¿½Ú‚ï¿½ï¿½ï¿½ï¿½oï¿½ï¿½
+		tyoe4 ï¿½ï¿½ï¿½oï¿½Cï¿½gï¿½Ú‚ï¿½ï¿½ï¿½ï¿½oï¿½ï¿½
 	*/
 	int pick = 0;
 
@@ -187,10 +186,10 @@ int	ls11_getBit(const char *inData, int type){
 			return ls11_byte;
 		}
 	}
-	/* ƒrƒbƒg‚Ìo—Í */
+	/* ï¿½rï¿½bï¿½gï¿½Ìoï¿½ï¿½ */
 	pick = 0x80 >> ls11_bit;
 	pick = inData[ls11_byte] & pick;
-	/* Œãˆ— */
+	/* ï¿½ãˆï¿½ï¿½ */
 	ls11_bit++;
 	if(ls11_bit > 7){
 		ls11_bit = 0;

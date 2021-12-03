@@ -1,4 +1,6 @@
 .DS_Store
+.vscode
 koei_viewer
-palettegen
+palette_gen
+ls11_decoder
 
