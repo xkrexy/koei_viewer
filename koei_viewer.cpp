@@ -18,6 +18,21 @@
 // - Align length: 32
 // - BPP: 4
 
+// HEXZCHP.R3 [LS11]
+// - Size: 16x1280 / 16x2784 / 16x2800
+// - Align length: 32
+// - BPP: 4
+
+// SMAPBGPL.R3 [LS11]
+// - Size: 16x3392 / 16x3872
+// - Align length: 32
+// - BPP: 4
+
+// MMAPBGPL.R3 [LS11]
+// - Size: 16x4080
+// - Align length: 32
+// - BPP: 4
+
 // HEXICHR.R3 [LS11]
 // - Size: 96x96
 // - Align length: 32 / TILED
