@@ -14,17 +14,8 @@ $(KOEI_VIEWER): koei_viewer.cpp koei_image.cpp
 $(PALETTE_GEN): palette_gen.cpp
 	$(CC) -o $(PALETTE_GEN) palette_gen.cpp $(LDFLAGS)
 
-LS11_DEC_SRCS = ls11mod/ls11_decode.cpp
-LS11_DEC_SRCS += ls11mod/ls11_decodePack.cpp
-LS11_DEC_SRCS += ls11mod/ls11_encodePack.cpp
-LS11_DEC_SRCS += ls11mod/ls11_encode.cpp
-LS11_DEC_SRCS += ls11mod/ls11_getFileData.cpp
-LS11_DEC_SRCS += ls11mod/ls11_outFileData.cpp
-
-LS11_DEC_SRCS += ls11_decoder.cpp
-
-$(LS11_DECODER): $(LS11_DEC_SRCS)
-	$(CC) -o $(LS11_DECODER) -fpermissive $(LS11_DEC_SRCS) $(LDFLAGS)
+$(LS11_DECODER): ls11_decoder.cpp
+	$(CC) -o $(LS11_DECODER) ls11_decoder.cpp $(LDFLAGS)
 
 clean:
 	@find . -name '*.o' -type f -delete

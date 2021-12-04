@@ -5,7 +5,8 @@
 
 const int ARG_WINDOW_WIDTH = 640;
 const int ARG_WINDOW_HEIGHT = 400;
-const int ARG_SCALE = 1;
+
+static int _SCALE = 1;
 
 SDL_Window *window = NULL;
 SDL_Surface *screenSurface = NULL;
@@ -13,7 +14,7 @@ SDL_Event event;
 
 void put_pixel(int x, int y, rgb_t rgb)
 {
-    SDL_Rect rect = {(x)*ARG_SCALE, (y)*ARG_SCALE, ARG_SCALE, ARG_SCALE};
+    SDL_Rect rect = {(x)*_SCALE, (y)*_SCALE, _SCALE, _SCALE};
     SDL_FillRect(screenSurface, &rect,
                  SDL_MapRGB(screenSurface->format, rgb.r, rgb.g, rgb.b));
 }
@@ -37,6 +38,23 @@ void redraw(const char *filename, const char *palette, int width, int height, in
         image_t image;
         read_image(fp, &image, width, height, align_length, bpp, left_to_right);
 
+#define HERO_TILED
+#ifdef HERO_TILED
+        int src_index = 0;
+        for (int i = 0; i < height / 16; i++)
+        {
+            for (int j = 0; j < width / 16; j++)
+            {
+                for (int k = 0; k < 16; k++)
+                {
+                    for (int l = 0; l < 16; l++)
+                    {
+                        put_pixel(j * 16 + l, i * 16 + k, index_to_rgb(image.buf[src_index++]));
+                    }
+                }
+            }
+        }
+#else
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
@@ -44,7 +62,7 @@ void redraw(const char *filename, const char *palette, int width, int height, in
                 put_pixel(x + j, y + i, index_to_rgb(get_index_image(&image, i, j)));
             }
         }
-
+#endif
         x += width;
         if (x > ARG_WINDOW_WIDTH)
         {
@@ -95,8 +113,8 @@ int main(int argc, char *argv[])
     }
 
     window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH * ARG_SCALE,
-                              ARG_WINDOW_HEIGHT * ARG_SCALE, SDL_WINDOW_SHOWN);
+                              SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH * _SCALE,
+                              ARG_WINDOW_HEIGHT * _SCALE, SDL_WINDOW_SHOWN);
     if (window == NULL)
     {
         printf("SDL_CreateWindow error: %s\n", SDL_GetError());
@@ -104,7 +122,11 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));
+    int align_length = atoi(argv[5]);
+    int bpp = atoi(argv[6]);
+    int left_to_right = atoi(argv[7]);
+
+    redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
 
     while (SDL_WaitEvent(&event) >= 0)
     {
@@ -118,6 +140,23 @@ int main(int argc, char *argv[])
                 SDL_DestroyWindow(window);
                 SDL_Quit();
                 return 0;
+            case SDLK_EQUALS:
+                _SCALE++;
+                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
+                break;
+            case SDLK_MINUS:
+                _SCALE--;
+                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
+                break;
+            case SDLK_PERIOD:
+                align_length++;
+                printf("Align length: %d\n", align_length);
+                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
+                break;
+            case SDLK_COMMA:
+                align_length--;
+                printf("Align length: %d\n", align_length);
+                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
                 break;
             }
         }
