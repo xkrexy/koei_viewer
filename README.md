@@ -16,6 +16,11 @@ $ ./koei_viewer KAODATAP.S4 SAM4KAO.RGB 64 80 8 1 3 0
 ![sam3](https://user-images.githubusercontent.com/39606947/144691504-99f3e17a-2df5-431d-93fb-1fb3db41ea7b.png)
 ![sam4](https://user-images.githubusercontent.com/39606947/144691506-42bf728f-151e-46e9-97a0-312aa0860b8b.png)
 ![dh2](https://user-images.githubusercontent.com/39606947/144691511-48a18673-f0af-4594-ba8c-df35645d872a.png)
+<img width="752" alt="hexichr" src="https://user-images.githubusercontent.com/39606947/144710552-b7c6b41d-3512-4f21-86e1-27b4a5ec606c.png">
+<img width="752" alt="hexbchr" src="https://user-images.githubusercontent.com/39606947/144710556-a7218e88-7c2b-400a-bf75-427aa5051d6e.png">
+<img width="752" alt="hexzchr" src="https://user-images.githubusercontent.com/39606947/144710562-85f6b579-6eec-4015-b215-0d0632609cae.png">
+<img width="752" alt="sscchr2" src="https://user-images.githubusercontent.com/39606947/144710564-2dd660ff-bfbf-4373-b304-271951941d1e.png">
+
 
 # 비고
 
