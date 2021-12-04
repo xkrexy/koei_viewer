@@ -3,6 +3,36 @@
 #include <stdio.h>
 #include "koei_image.h"
 
+// KAODATA.DAT / KAODATAP.S4 / KAODATA2.S4
+// - Size: 64x80
+// - Align length: 1
+// - BPP: 3
+
+// SSCCHR2.R3 [LS11]
+// - Size: 32x160
+// - Align length: 160
+// - BPP: 4
+
+// HEXBCHP.R3 [LS11]
+// - Size: 16x3584
+// - Align length: 32
+// - BPP: 4
+
+// HEXICHR.R3 [LS11]
+// - Size: 96x96
+// - Align length: 32 / TILED
+// - BPP: 4
+
+// HEXBCHR.R3 [LS11]
+// - Size: 64x64
+// - Align length: 32 / TILED
+// - BPP: 4
+
+// HEXZCHR.R3 [LS11]
+// - Size: 32x64
+// - Align length: 32 / TILED
+// - BPP: 4
+
 const int ARG_WINDOW_WIDTH = 640;
 const int ARG_WINDOW_HEIGHT = 400;
 
@@ -38,7 +68,6 @@ void redraw(const char *filename, const char *palette, int width, int height, in
         image_t image;
         read_image(fp, &image, width, height, align_length, bpp, left_to_right);
 
-#define HERO_TILED
 #ifdef HERO_TILED
         int src_index = 0;
         for (int i = 0; i < height / 16; i++)
