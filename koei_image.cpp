@@ -27,29 +27,6 @@ int read_palette(const char *filename)
     return (0);
 }
 
-int calc_image_count(const char *filename, int width, int height, int bpp)
-{
-    FILE *fp = fopen(filename, "r");
-    if (!fp)
-    {
-        return (0);
-    }
-
-    fseek(fp, 0L, SEEK_END);
-    long file_size = ftell(fp);
-    fclose(fp);
-
-    const int image_raw_size = (width * height * bpp) / BITS_PER_BYTE;
-
-    const int image_count = (file_size / image_raw_size);
-    if ((file_size % image_raw_size) != 0)
-    {
-        printf("Warning: File size is not divided by ImageSize! (%ld, %d)\n", file_size, image_raw_size);
-    }
-
-    return image_count;
-}
-
 rgb_t index_to_rgb(int index)
 {
     if (index >= 0 && index < 16)
@@ -67,9 +44,9 @@ uint8_t bit_from_bytes(uint8_t *bytes, int position)
     return (bytes[byte_index] & (0x80 >> bit_position)) >> (7 - bit_position);
 }
 
-int read_image(FILE *fp, image_t *image, int width, int height, int align_length, int bpp, int left_to_right)
+int read_image(uint8_t *buf, image_t *image, int width, int height, int align_length, int bpp, int left_to_right)
 {
-    if (!image)
+    if (!buf || !image)
     {
         return (-1);
     }
@@ -79,13 +56,15 @@ int read_image(FILE *fp, image_t *image, int width, int height, int align_length
     image->buf = (uint8_t *)malloc(width * height);
     memset(image->buf, 0, width * height);
 
+    buf_reader_t *reader = create_buffer_reader(buf, width * height * bpp / BITS_PER_BYTE, true);
+
     int position = 0;
     const int image_raw_size = (width * height * bpp) / BITS_PER_BYTE;
     for (int i = 0; i < image_raw_size / (align_length * bpp); i++)
     {
         uint8_t *pixels = (uint8_t *)malloc(align_length * bpp);
 
-        fread(pixels, 1, align_length * bpp, fp);
+        read_bytes(reader, pixels, align_length * bpp);
         for (int j = 0; j < align_length * BITS_PER_BYTE; j++)
         {
             image->buf[position] = 0;
@@ -105,6 +84,8 @@ int read_image(FILE *fp, image_t *image, int width, int height, int align_length
 
         free(pixels);
     }
+
+    destroy_buffer_reader(reader);
 
     return (0);
 }

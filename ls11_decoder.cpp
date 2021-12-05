@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <vector>
 
+#include "ls11_decoder.h"
+
 uint8_t header[16];
 uint8_t dict[256];
 
@@ -81,64 +83,68 @@ static void fat_decode(uint8_t *comp, uint32_t comp_size, uint8_t *uncomp, uint3
     }
 }
 
-void ls11_decode(const char *filename, void (*on_decode)(uint8_t *data, uint32_t size))
+void ls11_decode(uint8_t *buf, size_t size, std::function<void(uint8_t *buf, uint32_t size)> on_decode)
 {
-    FILE *fp = fopen(filename, "r");
-    if (fp)
+    if (!buf)
     {
-        fread(header, 1, 16, fp);
-        fread(dict, 1, 256, fp);
-
-        // Decode Fat
-        while (!feof(fp))
-        {
-            FAT_ENTRY fat_entry;
-            memset(&fat_entry, 0, sizeof(FAT_ENTRY));
-            fread(&fat_entry, sizeof(FAT_ENTRY), 1, fp);
-
-            // Little Endian to Big Endian
-            fat_entry.comp_size = htonl(fat_entry.comp_size);
-            fat_entry.uncomp_size = htonl(fat_entry.uncomp_size);
-            fat_entry.offset = htonl(fat_entry.offset);
-
-            if (fat_entry.comp_size == 0)
-            {
-                break;
-            }
-
-            fat_entries.push_back(fat_entry);
-        }
-
-        // Decode Dat
-        for (int i = 0; i < fat_entries.size(); i++)
-        {
-            uint8_t *comp_data = new uint8_t[fat_entries[i].comp_size];
-            uint8_t *uncomp_data = new uint8_t[fat_entries[i].uncomp_size];
-
-            memset(comp_data, 0, fat_entries[i].comp_size);
-            memset(uncomp_data, 0, fat_entries[i].uncomp_size);
-
-            fseek(fp, fat_entries[i].offset, SEEK_SET);
-            fread(comp_data, 1, fat_entries[i].comp_size, fp);
-
-            if (fat_entries[i].comp_size == fat_entries[i].uncomp_size)
-            {
-                memcpy(uncomp_data, comp_data, fat_entries[i].comp_size);
-            }
-            else
-            {
-                fat_decode(comp_data, fat_entries[i].comp_size, uncomp_data, fat_entries[i].uncomp_size);
-            }
-
-            if (on_decode)
-            {
-                on_decode(uncomp_data, fat_entries[i].uncomp_size);
-            }
-
-            delete[] comp_data;
-            delete[] uncomp_data;
-        }
-
-        fclose(fp);
+        return;
     }
+
+    buf_reader_t *reader = create_buffer_reader(buf, size, true);
+    fat_entries.clear();
+
+    read_bytes(reader, header, 16);
+    read_bytes(reader, dict, 256);
+
+    // Decode Fat
+    while (!buf_end(reader))
+    {
+        FAT_ENTRY fat_entry;
+        memset(&fat_entry, 0, sizeof(FAT_ENTRY));
+
+        // Default endian of reader is big endian.
+        // Values of fat_entry are also big endian.
+        fat_entry.comp_size = read_uint32(reader);
+        fat_entry.uncomp_size = read_uint32(reader);
+        fat_entry.offset = read_uint32(reader);
+
+        if (fat_entry.comp_size == 0)
+        {
+            break;
+        }
+
+        fat_entries.push_back(fat_entry);
+    }
+
+    // Decode Dat
+    for (int i = 0; i < fat_entries.size(); i++)
+    {
+        uint8_t *comp_data = new uint8_t[fat_entries[i].comp_size];
+        uint8_t *uncomp_data = new uint8_t[fat_entries[i].uncomp_size];
+
+        memset(comp_data, 0, fat_entries[i].comp_size);
+        memset(uncomp_data, 0, fat_entries[i].uncomp_size);
+
+        buf_seek(reader, fat_entries[i].offset);
+        read_bytes(reader, comp_data, fat_entries[i].comp_size);
+
+        if (fat_entries[i].comp_size == fat_entries[i].uncomp_size)
+        {
+            memcpy(uncomp_data, comp_data, fat_entries[i].comp_size);
+        }
+        else
+        {
+            fat_decode(comp_data, fat_entries[i].comp_size, uncomp_data, fat_entries[i].uncomp_size);
+        }
+
+        if (on_decode)
+        {
+            on_decode(uncomp_data, fat_entries[i].uncomp_size);
+        }
+
+        delete[] comp_data;
+        delete[] uncomp_data;
+    }
+
+    destroy_buffer_reader(reader);
 }

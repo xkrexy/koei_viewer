@@ -5,33 +5,14 @@
 #include <string>
 #include <stdbool.h>
 
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+
 #include "koei_image.h"
+#include "ls11_decoder.h"
 
-struct CONFIG
-{
-    bool is_ls11;
-    uint32_t width;
-    uint32_t height;
-    uint32_t align_length;
-    uint32_t bpp;
-    bool is_tiled;
-    bool is_big_endian;
-
-    CONFIG(
-        bool _is_ls11, uint32_t _width, uint32_t _height,
-        uint32_t _align_length, uint32_t _bpp,
-        bool _is_tiled, bool _is_big_endian)
-        : is_ls11(_is_ls11), width(_width), height(_height), align_length(_align_length), bpp(_bpp), is_big_endian(_is_big_endian)
-    {
-    }
-
-    CONFIG()
-        : is_ls11(false), width(0), height(0), align_length(1), bpp(3), is_big_endian(true)
-    {
-    }
-};
-
-std::map<std::string, CONFIG> configs;
+#define BITS_PER_BYTE (8)
 
 const int ARG_WINDOW_WIDTH = 640;
 const int ARG_WINDOW_HEIGHT = 400;
@@ -42,6 +23,12 @@ SDL_Window *window = NULL;
 SDL_Surface *screenSurface = NULL;
 SDL_Event event;
 
+rapidjson::Document d;
+uint32_t align_length_override;
+
+static uint8_t *raw_buffer;
+static size_t raw_buffer_size;
+
 void put_pixel(int x, int y, rgb_t rgb)
 {
     SDL_Rect rect = {(x)*_SCALE, (y)*_SCALE, _SCALE, _SCALE};
@@ -49,62 +36,153 @@ void put_pixel(int x, int y, rgb_t rgb)
                  SDL_MapRGB(screenSurface->format, rgb.r, rgb.g, rgb.b));
 }
 
-void redraw(const char *filename, const char *palette, CONFIG *config)
+void redraw(rapidjson::Value &config)
 {
     screenSurface = SDL_GetWindowSurface(window);
-    SDL_FillRect(screenSurface, NULL,
-                 SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
+    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
+
+    bool is_ls11 = config["ls11"].GetBool();
+    uint32_t default_width = config["default_width"].GetUint();
+    uint32_t default_height = config["default_height"].GetUint();
+    uint32_t bpp = config["bpp"].GetUint();
+    uint32_t align_length = config["align_length"].GetUint();
+    bool is_tiled = config["tiled"].GetBool();
+    bool is_big_endian = config["big_endian"].GetBool();
 
     int x = 0;
     int y = 0;
-    int image_count = calc_image_count(filename, config->width, config->height, config->bpp);
 
-    read_palette(palette);
-
-    FILE *fp = fopen(filename, "r");
-
-    for (int index = 0; index < image_count; index++)
+    if (!is_ls11)
     {
-        image_t image;
-        read_image(fp, &image, config->width, config->height, config->align_length, config->bpp, config->is_big_endian);
+        int image_data_size = (default_width * default_height * bpp / BITS_PER_BYTE);
+        int image_count = raw_buffer_size / image_data_size;
 
-#ifdef HERO_TILED
-        int src_index = 0;
-        for (int i = 0; i < height / 16; i++)
+        for (int index = 0; index < image_count; index++)
         {
-            for (int j = 0; j < width / 16; j++)
+            image_t image;
+            read_image(raw_buffer + (image_data_size * index), &image,
+                       default_width, default_height,
+                       align_length_override,
+                       bpp,
+                       is_big_endian);
+
+            if (is_tiled)
             {
-                for (int k = 0; k < 16; k++)
+                int src_index = 0;
+                for (int i = 0; i < default_height / 16; i++)
                 {
-                    for (int l = 0; l < 16; l++)
+                    for (int j = 0; j < default_width / 16; j++)
                     {
-                        put_pixel(j * 16 + l, i * 16 + k, index_to_rgb(image.buf[src_index++]));
+                        for (int k = 0; k < 16; k++)
+                        {
+                            for (int l = 0; l < 16; l++)
+                            {
+                                put_pixel(x + j * 16 + l, y + i * 16 + k, index_to_rgb(image.buf[src_index++]));
+                            }
+                        }
                     }
                 }
             }
-        }
-#else
-        for (int i = 0; i < config->height; i++)
-        {
-            for (int j = 0; j < config->width; j++)
+            else
             {
-                put_pixel(x + j, y + i, index_to_rgb(get_index_image(&image, i, j)));
+                for (int i = 0; i < default_height; i++)
+                {
+                    for (int j = 0; j < default_width; j++)
+                    {
+                        put_pixel(x + j, y + i, index_to_rgb(get_index_image(&image, i, j)));
+                    }
+                }
+            }
+            free_image(&image);
+
+            x += default_width;
+            if (x > ARG_WINDOW_WIDTH)
+            {
+                x = 0;
+                y += default_height;
             }
         }
-#endif
-        x += config->width;
-        if (x > ARG_WINDOW_WIDTH)
-        {
-            x = 0;
-            y += config->height;
-        }
+    }
+    else
+    {
+        ls11_decode(raw_buffer, raw_buffer_size, [=, &x, &y](uint8_t *buf, uint32_t size) -> void
+                    {
+                        image_t image;
+                        read_image(buf, &image,
+                                   default_width, default_height,
+                                   align_length_override,
+                                   bpp,
+                                   is_big_endian);
 
-        free_image(&image);
+                        if (is_tiled)
+                        {
+                            int src_index = 0;
+                            for (int i = 0; i < default_height / 16; i++)
+                            {
+                                for (int j = 0; j < default_width / 16; j++)
+                                {
+                                    for (int k = 0; k < 16; k++)
+                                    {
+                                        for (int l = 0; l < 16; l++)
+                                        {
+                                            put_pixel(x + j * 16 + l, y + i * 16 + k, index_to_rgb(image.buf[src_index++]));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < default_height; i++)
+                            {
+                                for (int j = 0; j < default_width; j++)
+                                {
+                                    put_pixel(x + j, y + i, index_to_rgb(get_index_image(&image, i, j)));
+                                }
+                            }
+                        }
+                        free_image(&image);
+
+                        x += default_width;
+                        if (x > ARG_WINDOW_WIDTH)
+                        {
+                            x = 0;
+                            y += default_height;
+                        }
+                    });
     }
 
-    fclose(fp);
-
     SDL_UpdateWindowSurface(window);
+}
+
+void read_json()
+{
+    long size = 0;
+    FILE *fp = fopen("config.json", "r");
+    if (fp)
+    {
+        fseek(fp, 0L, SEEK_END);
+        size = ftell(fp);
+        fseek(fp, 0L, SEEK_SET);
+
+        char *json = new char[size];
+        memset(json, 0, size);
+        fread(json, 1, size, fp);
+
+        d.Parse(json);
+
+        fclose(fp);
+    }
+}
+
+void destroy_all()
+{
+    if (raw_buffer)
+    {
+        delete[] raw_buffer;
+        raw_buffer = NULL;
+        raw_buffer_size = 0;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -117,17 +195,22 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    configs.insert(std::pair<std::string, CONFIG>("KAODATA.DAT", CONFIG(false, 64, 80, 1, 3, false, false)));
-    configs.insert(std::pair<std::string, CONFIG>("KAODATAP.S4", CONFIG(false, 64, 80, 1, 3, false, false)));
-    configs.insert(std::pair<std::string, CONFIG>("KAODATA2.S4", CONFIG(false, 64, 80, 1, 3, false, false)));
-    configs.insert(std::pair<std::string, CONFIG>("HEXBCHP.R3", CONFIG(true, 16, 3584, 32, 4, false, true)));
-    configs.insert(std::pair<std::string, CONFIG>("HEXZCHP.R3", CONFIG(true, 16, 1280, 32, 4, false, true)));
-    configs.insert(std::pair<std::string, CONFIG>("HEXICHR.R3", CONFIG(true, 96, 96, 32, 4, true, true)));
-    configs.insert(std::pair<std::string, CONFIG>("HEXBCHR.R3", CONFIG(true, 64, 64, 32, 4, true, true)));
-    configs.insert(std::pair<std::string, CONFIG>("HEXZCHR.R3", CONFIG(true, 32, 64, 32, 4, true, true)));
-    configs.insert(std::pair<std::string, CONFIG>("SMAPBGPL.R3", CONFIG(true, 16, 3392, 32, 4, false, true)));
-    configs.insert(std::pair<std::string, CONFIG>("MMAPBGPL.R3", CONFIG(true, 16, 4080, 32, 4, false, true)));
-    configs.insert(std::pair<std::string, CONFIG>("SSCCHR2.R3", CONFIG(true, 32, 160, 160, 4, false, true)));
+    read_json();
+
+    read_palette(argv[2]);
+
+    FILE *fp = fopen(argv[1], "r");
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        raw_buffer_size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+
+        raw_buffer = new uint8_t[raw_buffer_size];
+        fread(raw_buffer, sizeof(uint8_t), raw_buffer_size, fp);
+
+        fclose(fp);
+    }
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -148,23 +231,18 @@ int main(int argc, char *argv[])
     std::string path = argv[1];
     std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 
-    if (configs.find(base_filename) == configs.end())
+    if (!d.HasMember(base_filename.c_str()))
     {
         printf("Error: There is no preset information of %s!\n", argv[1]);
         return 0;
     }
 
-    CONFIG config = configs[base_filename];
-
-    printf("config.width: %d\n", config.width);
-    printf("config.height: %d\n", config.height);
-    printf("config.align_length: %d\n", config.align_length);
-    printf("config.bpp: %d\n", config.bpp);
-    printf("config.is_big_endian: %d\n", config.is_big_endian);
+    rapidjson::Value &config = d[base_filename.c_str()];
+    align_length_override = config["align_length"].GetUint();
 
     do
     {
-        redraw(argv[1], argv[2], &config);
+        redraw(config);
 
         switch (event.type)
         {
@@ -172,6 +250,8 @@ int main(int argc, char *argv[])
             switch (event.key.keysym.sym)
             {
             case SDLK_ESCAPE:
+                destroy_all();
+
                 SDL_DestroyWindow(window);
                 SDL_Quit();
                 return 0;
@@ -182,22 +262,26 @@ int main(int argc, char *argv[])
                 _SCALE--;
                 break;
             case SDLK_PERIOD:
-                config.align_length++;
-                printf("Align length: %d\n", config.align_length);
+                align_length_override++;
+                printf("Align length override: %d\n", align_length_override);
                 break;
             case SDLK_COMMA:
-                config.align_length--;
-                printf("Align length: %d\n", config.align_length);
+                align_length_override--;
+                printf("Align length override: %d\n", align_length_override);
                 break;
             }
             break;
 
         case SDL_QUIT:
+            destroy_all();
+
             SDL_DestroyWindow(window);
             SDL_Quit();
             return 0;
         }
     } while (SDL_WaitEvent(&event) >= 0);
+
+    destroy_all();
 
     SDL_DestroyWindow(window);
     SDL_Quit();
