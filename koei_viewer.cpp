@@ -1,52 +1,37 @@
 #include <SDL2/SDL.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <map>
+#include <string>
+#include <stdbool.h>
+
 #include "koei_image.h"
 
-// KAODATA.DAT / KAODATAP.S4 / KAODATA2.S4
-// - Size: 64x80
-// - Align length: 1
-// - BPP: 3
+struct PRESET
+{
+    bool is_ls11;
+    uint32_t width;
+    uint32_t height;
+    uint32_t align_length;
+    uint32_t bpp;
+    bool is_tiled;
+    bool is_big_endian;
 
-// SSCCHR2.R3 [LS11]
-// - Size: 32x160
-// - Align length: 160
-// - BPP: 4
+    PRESET(
+        bool _is_ls11, uint32_t _width, uint32_t _height,
+        uint32_t _align_length, uint32_t _bpp,
+        bool _is_tiled, bool _is_big_endian)
+        : is_ls11(_is_ls11), width(_width), height(_height), align_length(_align_length), bpp(_bpp), is_big_endian(_is_big_endian)
+    {
+    }
 
-// HEXBCHP.R3 [LS11]
-// - Size: 16x3584
-// - Align length: 32
-// - BPP: 4
+    PRESET()
+        : is_ls11(false), width(0), height(0), align_length(1), bpp(3), is_big_endian(true)
+    {
+    }
+};
 
-// HEXZCHP.R3 [LS11]
-// - Size: 16x1280 / 16x2784 / 16x2800
-// - Align length: 32
-// - BPP: 4
-
-// SMAPBGPL.R3 [LS11]
-// - Size: 16x3392 / 16x3872
-// - Align length: 32
-// - BPP: 4
-
-// MMAPBGPL.R3 [LS11]
-// - Size: 16x4080
-// - Align length: 32
-// - BPP: 4
-
-// HEXICHR.R3 [LS11]
-// - Size: 96x96
-// - Align length: 32 / TILED
-// - BPP: 4
-
-// HEXBCHR.R3 [LS11]
-// - Size: 64x64
-// - Align length: 32 / TILED
-// - BPP: 4
-
-// HEXZCHR.R3 [LS11]
-// - Size: 32x64
-// - Align length: 32 / TILED
-// - BPP: 4
+std::map<std::string, PRESET> filename_presets;
 
 const int ARG_WINDOW_WIDTH = 640;
 const int ARG_WINDOW_HEIGHT = 400;
@@ -124,31 +109,36 @@ void redraw(const char *filename, const char *palette, int width, int height, in
 
 int main(int argc, char *argv[])
 {
-    if (argc < 8)
+    if (argc < 3)
     {
-        printf("Usage: %s <image> <palette> <width> <height> <align length> <bpp> <left to right>\n", argv[0]);
-        printf("   ex) %s KAODATA.DAT SAM3KAO.RGB 64 80 1 3 0\n", argv[0]);
-        printf("\n");
-        printf("[Align length / bpp / left to right examples]\n");
-        printf("  - RPGMK\n");
-        printf("    align_length: width * height / 8\n");
-        printf("    bpp: 4\n");
-        printf("    left_to_right: 1\n");
-        printf("  - Sam3 Kao / Sam4 Kao\n");
-        printf("    align_length: 1\n");
-        printf("    bpp: 3\n");
-        printf("    left_to_right: 0\n");
-        printf("  - Horizon2(DH2) Kao\n");
-        printf("    align_length: 1\n");
-        printf("    bpp: 3\n");
-        printf("    left_to_right: 1\n");
-        printf("  - Hero HEXBCHP.000\n");
-        printf("    align_length: 32\n");
-        printf("    bpp: 4\n");
-        printf("\n");
+        printf("Usage: %s <image> <palette>\n", argv[0]);
+        printf("   ex) %s KAODATA.DAT SAM3KAO.RGB\n", argv[0]);
 
         return 0;
     }
+
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("KAODATA.DAT", PRESET(false, 64, 80, 1, 3, false, false)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("KAODATAP.S4", PRESET(false, 64, 80, 1, 3, false, false)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("KAODATA2.S4", PRESET(false, 64, 80, 1, 3, false, false)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("HEXBCHP.R3", PRESET(true, 16, 3584, 32, 4, false, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("HEXZCHP.R3", PRESET(true, 16, 1280, 32, 4, false, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("HEXICHR.R3", PRESET(true, 96, 96, 32, 4, true, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("HEXBCHR.R3", PRESET(true, 64, 64, 32, 4, true, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("HEXZCHR.R3", PRESET(true, 32, 64, 32, 4, true, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("SMAPBGPL.R3", PRESET(true, 16, 3392, 32, 4, false, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("MMAPBGPL.R3", PRESET(true, 16, 4080, 32, 4, false, true)));
+    filename_presets.insert(
+        std::pair<std::string, PRESET>("SSCCHR2.R3", PRESET(true, 32, 160, 160, 4, false, true)));
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -166,18 +156,30 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    int align_length = atoi(argv[5]);
-    int bpp = atoi(argv[6]);
-    int left_to_right = atoi(argv[7]);
+    std::string path = argv[1];
+    std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 
-    redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
-
-    while (SDL_WaitEvent(&event) >= 0)
+    if (filename_presets.find(base_filename) == filename_presets.end())
     {
+        printf("Error: There is no preset information of %s!\n", argv[1]);
+        return 0;
+    }
+
+    PRESET preset = filename_presets[base_filename];
+
+    printf("preset.width: %d\n", preset.width);
+    printf("preset.height: %d\n", preset.height);
+    printf("preset.align_length: %d\n", preset.align_length);
+    printf("preset.bpp: %d\n", preset.bpp);
+    printf("preset.is_big_endian: %d\n", preset.is_big_endian);
+
+    do
+    {
+        redraw(argv[1], argv[2], preset.width, preset.height, preset.align_length, preset.bpp, preset.is_big_endian);
+
         switch (event.type)
         {
         case SDL_KEYDOWN:
-        {
             switch (event.key.keysym.sym)
             {
             case SDLK_ESCAPE:
@@ -186,35 +188,27 @@ int main(int argc, char *argv[])
                 return 0;
             case SDLK_EQUALS:
                 _SCALE++;
-                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
                 break;
             case SDLK_MINUS:
                 _SCALE--;
-                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
                 break;
             case SDLK_PERIOD:
-                align_length++;
-                printf("Align length: %d\n", align_length);
-                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
+                preset.align_length++;
+                printf("Align length: %d\n", preset.align_length);
                 break;
             case SDLK_COMMA:
-                align_length--;
-                printf("Align length: %d\n", align_length);
-                redraw(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), align_length, bpp, left_to_right);
+                preset.align_length--;
+                printf("Align length: %d\n", preset.align_length);
                 break;
             }
-        }
-        break;
+            break;
 
         case SDL_QUIT:
-        {
             SDL_DestroyWindow(window);
             SDL_Quit();
             return 0;
         }
-        break;
-        }
-    }
+    } while (SDL_WaitEvent(&event) >= 0);
 
     SDL_DestroyWindow(window);
     SDL_Quit();
