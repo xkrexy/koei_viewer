@@ -1,77 +1,9 @@
 #include "buf_reader.h"
 #include <string.h>
 
-uint8_t dict[256];
-uint32_t comp_pos = 0;
-uint32_t uncomp_pos = 0;
-int32_t bit_pos = 7;
-
-static int get_code(uint8_t *comp, uint8_t *uncomp)
-{
-    int code1 = 0;
-    int code2 = 0;
-    int count = 0;
-    int bit = 0;
-
-    do
-    {
-        bit = (comp[comp_pos] >> bit_pos) & 0x01;
-        code1 = (code1 << 1) | bit;
-        count++;
-        bit_pos--;
-        if (bit_pos < 0)
-        {
-            bit_pos = 7;
-            comp_pos++;
-        }
-    } while (bit == 1);
-
-    for (int i = 0; i < count; i++)
-    {
-        bit = (comp[comp_pos] >> bit_pos) & 0x01;
-        code2 = (code2 << 1) | bit;
-        bit_pos--;
-        if (bit_pos < 0)
-        {
-            bit_pos = 7;
-            comp_pos++;
-        }
-    }
-
-    return (code1 + code2);
-}
-
-static void fat_decode(uint8_t *comp, uint32_t comp_size, uint8_t *uncomp, uint32_t uncomp_size)
-{
-    static const int MR = 3;
-    comp_pos = 0;
-    uncomp_pos = 0;
-    bit_pos = 7;
-
-    while (comp_pos < comp_size && uncomp_pos < uncomp_size)
-    {
-        int code = get_code(comp, uncomp);
-        if (code < 256)
-        {
-            uncomp[uncomp_pos] = dict[code];
-            uncomp_pos++;
-        }
-        else
-        {
-            int offset = code - 256;
-            int len = get_code(comp, uncomp) + MR;
-            for (int i = 0; i < len; i++)
-            {
-                uncomp[uncomp_pos] = uncomp[uncomp_pos - offset];
-                uncomp_pos++;
-            }
-        }
-    }
-}
-
 int main(int argc, char *argv[]) {
-    FILE *fp = fopen("hero/FACEDAT.R3", "r");
-    //FILE *fp = fopen("sam4/KAODATA.S4", "r");
+    //FILE *fp = fopen("hero/FACEDAT.R3", "r");
+    FILE *fp = fopen("sam4/KAODATA.S4", "r");
     fseek(fp, 0, SEEK_END);
     size_t filesize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
@@ -89,10 +21,6 @@ int main(int argc, char *argv[]) {
 
     // 1440 까지 Header고, 1440부터 끝까지는 전부 데이터
     // 즉 Dict가 다른 파일에 있을 가능성이 높음
-
-    buf_seek(reader, 338737 - 256);
-    read_bytes(reader, dict, 256);
-    buf_seek(reader, 0);
 
     int index = 0;
     int data_sum = 0;
@@ -123,7 +51,7 @@ int main(int argc, char *argv[]) {
         uint8_t *comp = new uint8_t[datasize];
         memset(comp, 0, datasize);
 
-        buf_seek(reader, address + 1440);
+        buf_seek(reader, address + 2040);
         read_bytes(reader, comp, datasize);
 
         fwrite(comp, 1, datasize, fp);
