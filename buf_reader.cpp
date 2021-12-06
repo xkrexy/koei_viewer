@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
+#ifdef __linux__
+#include <arpa/inet.h>
+#endif
 
 #include "buf_reader.h"
 
@@ -60,6 +63,20 @@ void read_bytes(buf_reader_t *buf_reader, uint8_t *buf, size_t size)
     }
 }
 
+int8_t read_int8(buf_reader_t *buf_reader)
+{
+    if (buf_reader)
+    {
+        int8_t value = 0;
+        value = *(int8_t *)(buf_reader->buf + buf_reader->seek_pos);
+        buf_reader->seek_pos += sizeof(int8_t);
+
+        return value;
+    }
+
+    return 0;
+}
+
 int16_t read_int16(buf_reader_t *buf_reader)
 {
     if (buf_reader)
@@ -96,6 +113,11 @@ int32_t read_int32(buf_reader_t *buf_reader)
     }
 
     return 0;
+}
+
+uint8_t read_uint8(buf_reader_t *buf_reader)
+{
+    return (uint8_t)read_int8(buf_reader);
 }
 
 uint16_t read_uint16(buf_reader_t *buf_reader)
