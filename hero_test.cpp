@@ -70,15 +70,14 @@ static void fat_decode(uint8_t *comp, uint32_t comp_size, uint8_t *uncomp, uint3
 }
 
 int main(int argc, char *argv[]) {
-    FILE *fp = fopen("hero/FACEDAT.R3", "r");
-    //FILE *fp = fopen("sam4/KAODATA.S4", "r");
+    //FILE *fp = fopen("hero/FACEDAT.R3", "r");
+    FILE *fp = fopen("sam4/KAODATA.S4", "r");
     fseek(fp, 0, SEEK_END);
     size_t filesize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
     uint8_t *buf = new uint8_t[filesize];
     size_t ret = fread(buf, 1, filesize, fp);
-    printf("FileSize: %ld / Read: %ld\n", filesize, ret);
     fclose(fp);
 
     buf_reader_t *reader = create_buffer_reader(buf, filesize, false);
@@ -96,6 +95,7 @@ int main(int argc, char *argv[]) {
     buf_seek(reader, 0);
 
     int index = 0;
+    int data_sum = 0;
     while (!buf_end(reader)) {
         int address = read_uint32(reader);
         int datasize = read_uint16(reader);
@@ -103,11 +103,19 @@ int main(int argc, char *argv[]) {
         printf("Value[%3d]: Seek(%5d) %8d %5d\n", index, curpos - 6, address, datasize);
 
         if (address >= filesize) {
+            int data_start = buf_get_seek_pos(reader) - 6;
+            printf("\n>> Result\n");
+            printf("FileSize: %ld / Read: %ld\n", filesize, ret);
+            printf("Data starts at %d\n", data_start);
+            printf("Data Size Sum: %d\n", data_sum);
+            printf("%ld - %d = %ld\n", filesize, data_start, filesize - data_start);
             break;
         }
 
+        data_sum += datasize;
+
         //Save uncompressed file (testing)
-#if 1
+#if 0
         char path[32];
         sprintf(path, "temp/%03d.DAT", index);
         FILE *fp = fopen(path, "w");
@@ -134,8 +142,6 @@ int main(int argc, char *argv[]) {
 
         index++;
     }
-
-    printf("Last buffer seek pos: %d(0x%08x)\n", buf_get_seek_pos(reader), buf_get_seek_pos(reader));
 
     delete[] buf;
 
