@@ -1,6 +1,14 @@
-#include "buf_reader.h"
 #include <string.h>
 #include <sys/stat.h>
+#include <vector>
+
+#include "buf_reader.h"
+
+struct ENTITY
+{
+    uint32_t addr;
+    uint16_t size;
+};
 
 int main(int argc, char *argv[])
 {
@@ -23,30 +31,20 @@ int main(int argc, char *argv[])
 
     buf_reader_t *reader = create_buffer_reader(buf, filesize, false);
 
+    std::vector<ENTITY> entities;
+
     int index = 0;
     int data_sum = 0;
     while (!buf_end(reader))
     {
-        int address = read_uint32(reader);
-        int datasize = read_uint16(reader);
-        int curpos = buf_get_seek_pos(reader);
+        uint32_t address = read_uint32(reader);
+        uint16_t datasize = read_uint16(reader);
+        int32_t curpos = buf_get_seek_pos(reader);
 
-        // Save compreseed
-        char path[32];
-        sprintf(path, "%s/%s.%03d", argv[2], argv[2], index);
-        FILE *fp = fopen(path, "w");
-
-        uint8_t *comp = new uint8_t[datasize];
-        memset(comp, 0, datasize);
-
-        buf_seek(reader, address + 2040);
-        read_bytes(reader, comp, datasize);
-        fwrite(comp, 1, datasize, fp);
-        fclose(fp);
-
-        delete[] comp;
-
-        buf_seek(reader, curpos);
+        ENTITY entity;
+        entity.addr = address;
+        entity.size = datasize;
+        entities.push_back(entity);
 
         data_sum += datasize;
         if (curpos + data_sum >= filesize)
@@ -58,6 +56,28 @@ int main(int argc, char *argv[])
         }
 
         index++;
+    }
+
+    size_t header_size = entities.size() * (sizeof(uint32_t) + sizeof(uint16_t));
+    printf("Count: %lu\n", entities.size());
+    printf("Header size: %lu\n", header_size);
+
+    for (int i = 0; i < (int)entities.size(); i++)
+    {
+        // Save compreseed
+        char path[32];
+        sprintf(path, "%s/%03d.UNPACKED", argv[2], i);
+        FILE *fp = fopen(path, "w");
+
+        uint8_t *comp = new uint8_t[entities[i].size];
+        memset(comp, 0, entities[i].size);
+
+        buf_seek(reader, entities[i].addr + header_size);
+        read_bytes(reader, comp, entities[i].size);
+        fwrite(comp, 1, entities[i].size, fp);
+        fclose(fp);
+
+        delete[] comp;
     }
 
     delete[] buf;
