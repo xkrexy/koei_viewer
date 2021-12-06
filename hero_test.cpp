@@ -70,8 +70,8 @@ static void fat_decode(uint8_t *comp, uint32_t comp_size, uint8_t *uncomp, uint3
 }
 
 int main(int argc, char *argv[]) {
-    //FILE *fp = fopen("hero/FACEDAT.R3", "r");
-    FILE *fp = fopen("sam4/KAODATA.S4", "r");
+    FILE *fp = fopen("hero/FACEDAT.R3", "r");
+    //FILE *fp = fopen("sam4/KAODATA.S4", "r");
     fseek(fp, 0, SEEK_END);
     size_t filesize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
@@ -114,8 +114,27 @@ int main(int argc, char *argv[]) {
 
         data_sum += datasize;
 
-        //Save uncompressed file (testing)
+#if 1
+        // Save compreseed
+        char path[32];
+        sprintf(path, "temp/%03d.DAT", index);
+        FILE *fp = fopen(path, "w");
+
+        uint8_t *comp = new uint8_t[datasize];
+        memset(comp, 0, datasize);
+
+        buf_seek(reader, address + 1440);
+        read_bytes(reader, comp, datasize);
+
+        fwrite(comp, 1, datasize, fp);
+
+        fclose(fp);
+
+        delete[] comp;
+#endif
+
 #if 0
+        // Save uncompressed file (testing)
         char path[32];
         sprintf(path, "temp/%03d.DAT", index);
         FILE *fp = fopen(path, "w");
