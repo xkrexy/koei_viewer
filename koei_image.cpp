@@ -8,6 +8,11 @@
 
 static rgb_t g_palette[16];
 
+rgb_t get_palette(uint8_t index)
+{
+    return g_palette[index];
+}
+
 int read_palette(const char *filename)
 {
     FILE *fp = fopen(filename, "r");

@@ -6,8 +6,8 @@
 
 #define BITS_PER_BYTE (8)
 
-const int ARG_WINDOW_WIDTH = 640;
-const int ARG_WINDOW_HEIGHT = 400;
+const int ARG_WINDOW_WIDTH = 1280;
+const int ARG_WINDOW_HEIGHT = 800;
 
 static int _SCALE = 1;
 
@@ -19,9 +19,18 @@ uint8_t *buf;
 buf_reader_t *reader;
 uint8_t *zhaoyun;
 
+int step_enabled = 0;
+
 void put_pixel(int x, int y, rgb_t rgb)
 {
     SDL_Rect rect = {(x)*_SCALE, (y)*_SCALE, _SCALE, _SCALE};
+    SDL_FillRect(screenSurface, &rect,
+                 SDL_MapRGB(screenSurface->format, rgb.r, rgb.g, rgb.b));
+}
+
+void hline(int y, rgb_t rgb)
+{
+    SDL_Rect rect = {0, (y)*_SCALE, ARG_WINDOW_WIDTH, _SCALE};
     SDL_FillRect(screenSurface, &rect,
                  SDL_MapRGB(screenSurface->format, rgb.r, rgb.g, rgb.b));
 }
@@ -40,50 +49,15 @@ int step = 0;
         (byte & 0x02 ? '1' : '0'), \
         (byte & 0x01 ? '1' : '0')
 
-void redraw()
+rgb_t white = {0xff, 0xff, 0xff};
+rgb_t black = {0, 0, 0};
+rgb_t blue = {0, 0, 0xff};
+
+// 01100001
+// 11010111
+
+void draw_zhaoyun()
 {
-    screenSurface = SDL_GetWindowSurface(window);
-    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x00));
-
-    rgb_t white;
-    white.r = 0xff;
-    white.g = 0xff;
-    white.b = 0xff;
-
-    buf_seek(reader, header);
-
-    int _step = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        for (int j = 0; j < 80; j++)
-        {
-            uint8_t line = read_uint8(reader);
-            printf("%d: %02x (%d) / " BYTE_TO_BINARY_PATTERN "\n", _step, line, line, BYTE_TO_BINARY(line));
-
-            for (int b = 0; b < BITS_PER_BYTE; b++)
-            {
-                if ((line >> (7 - b)) & 0x01)
-                {
-                    if (i % 2 == 0)
-                    {
-                        put_pixel(i * 8 + b, j, white);
-                    }
-                    else
-                    {
-                        put_pixel(i * 8 + b, 79 - j, white);
-                    }
-                }
-            }
-
-            _step++;
-            if (_step >= step)
-            {
-                goto end;
-            }
-        }
-    }
-end:
-
     // Zhao Yun
     for (int i = 0; i < 80; i++)
     {
@@ -97,10 +71,270 @@ end:
             c.r = r;
             c.g = g;
             c.b = b;
-            put_pixel(64 + j, i, c);
+
+            uint8_t index = 0;
+            // palette index:
+            for (int p = 0; p < 16; p++)
+            {
+                rgb_t cc = get_palette(p);
+                if (cc.r == c.r && cc.g == c.g && cc.b == c.b)
+                {
+                    index = p;
+                    break;
+                }
+            }
+
+            index >>= 1;
+
+            int gap = (j / 8);
+
+            if (index & 0x01)
+            {
+                put_pixel(9 * 8 + 1 + j + gap, i, white);
+            }
+            else
+            {
+                put_pixel(9 * 8 + 1 + j + gap, i, black);
+            }
         }
     }
+}
 
+void redraw()
+{
+    screenSurface = SDL_GetWindowSurface(window);
+    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0x00, 0x00));
+
+    buf_seek(reader, header);
+
+    uint8_t swapped = 0x54;
+
+    draw_zhaoyun();
+
+    int _step = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 80; j++)
+        {
+            uint8_t line = read_uint8(reader);
+            printf("%d: %02x (%d) / " BYTE_TO_BINARY_PATTERN "\n", _step, line, line, BYTE_TO_BINARY(line));
+
+            int y = j;
+
+            if (bit_from_bytes(&swapped, i))
+            {
+                y = 80 - j - 1;
+            }
+
+            // 10100100 이면 뒤에 1바이트를 읽어 5번 반복(임시)
+            // if (line == 0xa4)
+            // {
+            //     uint8_t line1 = read_uint8(reader);
+            //     uint8_t line2 = read_uint8(reader); // 임시
+            //     int xxx = 5;
+            //     for (int count = 0; count < xxx; count++)
+            //     {
+            //         for (int b = 0; b < BITS_PER_BYTE; b++)
+            //         {
+            //             if ((line1 >> (7 - b)) & 0x01)
+            //             {
+            //                 put_pixel(i * 9 + b, y, white);
+            //             }
+            //             else
+            //             {
+            //                 put_pixel(i * 9 + b, y, black);
+            //             }
+            //         }
+            //         y++;
+            //     }
+            //     j += xxx - 1;
+            //     continue;
+            // }
+
+            // 0x21이면 기존 2개를 읽어 일단 6번 반복
+            if (line == 0x21)
+            {
+                buf_seek(reader, buf_get_seek_pos(reader) - 3);
+                uint8_t line1 = read_uint8(reader);
+                uint8_t line2 = read_uint8(reader);
+                uint8_t line3 = read_uint8(reader); // 33
+                uint8_t line4 = read_uint8(reader); // 33
+                uint8_t line5 = read_uint8(reader); // 33
+                uint8_t line6 = read_uint8(reader); // 33
+                int xxx = 10;
+                for (int count = 0; count < xxx; count++)
+                {
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line1 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line2 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                }
+                j += xxx + 1;
+
+                continue;
+            }
+            // 10100011 이면 뒤에 1바이트를 읽어 4번 반복(임시)
+            if (line == 0xa3)
+            {
+                uint8_t line1 = read_uint8(reader);
+                int xxx = 4;
+                for (int count = 0; count < xxx; count++)
+                {
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line1 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                }
+                j += xxx - 1;
+                continue;
+            }
+            if (line == 0x62)
+            {
+                uint8_t line1 = read_uint8(reader);
+                uint8_t line2 = read_uint8(reader);
+                uint8_t line3 = read_uint8(reader); // 임시
+
+                printf("  S - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line));
+                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line1));
+                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line2));
+                printf("  E - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line3));
+
+                //int xxx = (line & 0x0f) + 1;
+                int xxx = 3;
+                for (int count = 0; count < xxx; count++)
+                {
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line1 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line2 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                }
+                j += xxx + 1;
+
+                continue;
+            }
+
+            // 01100010 이어도 뒤에 2바이트 읽음
+
+            // 01100001 이면 뒤에 2바이트를 읽어 2번 출력(임시)
+            // 가 아니라 0110 이면 우측4비트 + 1번 반복
+            //if ((line & 0x60) == 0x60)
+            if (line == 0x61)
+            {
+                uint8_t line1 = read_uint8(reader);
+                uint8_t line2 = read_uint8(reader);
+                uint8_t line3 = read_uint8(reader); // 임시
+
+                printf("  S - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line));
+                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line1));
+                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line2));
+                printf("  E - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line3));
+
+                //int xxx = (line & 0x0f) + 1;
+                int xxx = 2;
+                for (int count = 0; count < xxx; count++)
+                {
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line1 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                    for (int b = 0; b < BITS_PER_BYTE; b++)
+                    {
+                        if ((line2 >> (7 - b)) & 0x01)
+                        {
+                            put_pixel(i * 9 + b, y, white);
+                        }
+                        else
+                        {
+                            put_pixel(i * 9 + b, y, black);
+                        }
+                    }
+                    y++;
+                }
+                j += xxx + 1;
+
+                continue;
+            }
+
+            for (int b = 0; b < BITS_PER_BYTE; b++)
+            {
+                if ((line >> (7 - b)) & 0x01)
+                {
+                    put_pixel(i * 9 + b, y, white);
+                }
+                else
+                {
+                    put_pixel(i * 9 + b, y, black);
+                }
+            }
+
+            _step++;
+            if (_step >= step)
+            {
+                if (step_enabled)
+                {
+                    hline(y + 1, blue);
+                    goto end;
+                }
+            }
+        }
+    }
+end:
     SDL_UpdateWindowSurface(window);
 }
 
@@ -122,6 +356,11 @@ int main(int argc, char *argv[])
     buf = new uint8_t[filesize];
     size_t ret = fread(buf, 1, filesize, fp);
     fclose(fp);
+
+    if (argc >= 3 && argv[2][0] == '1')
+    {
+        step_enabled = 1;
+    }
 
     reader = create_buffer_reader(buf, filesize, false);
 

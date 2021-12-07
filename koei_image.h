@@ -19,10 +19,13 @@ typedef struct
     uint8_t *buf;
 } __attribute__((packed)) image_t;
 
-int read_palette(const char *filename);
+uint8_t bit_from_bytes(uint8_t *bytes, int position);
 rgb_t index_to_rgb(int index);
-int read_image(uint8_t *buf, image_t *image, int width, int height, int align_length, int bpp, int left_to_right);
+rgb_t get_palette(uint8_t index);
 void free_image(image_t *image);
+
+int read_palette(const char *filename);
+int read_image(uint8_t *buf, image_t *image, int width, int height, int align_length, int bpp, int left_to_right);
 int get_index_image(image_t *image, int row, int col);
 
 #endif
