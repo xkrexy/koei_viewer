@@ -15,6 +15,7 @@ buf_reader_t *create_buffer_reader(uint8_t *buf, size_t size, bool big_endian);
 void destroy_buffer_reader(buf_reader_t *buf_reader);
 
 void buf_seek(buf_reader_t *buf_reader, int32_t seek_pos);
+void buf_rseek(buf_reader_t *buf_reader, int32_t seek_amount);
 int32_t buf_get_seek_pos(buf_reader_t *buf_reader);
 bool buf_end(buf_reader_t *buf_reader);
 

@@ -137,16 +137,6 @@ void draw_1byte(int *row, int *col, uint8_t value)
     }
 }
 
-static int _SAVE_POS = 0;
-void save_pos()
-{
-    _SAVE_POS = buf_get_seek_pos(reader);
-}
-void restore_pos()
-{
-    buf_seek(reader, _SAVE_POS);
-}
-
 void redraw()
 {
     screenSurface = SDL_GetWindowSurface(window);
@@ -166,11 +156,17 @@ void redraw()
     while (col < 8)
     {
         uint8_t value = read_uint8(reader);
-        save_pos();
 
         printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN "\n", _step, BYTE_TO_BINARY(value));
+        if (value == 0b01111110) // 바로 직전 바이트를 2번 복사
+        {
+            uint8_t pattern[1] = {
+                build[build_pos - 1]};
 
-        if (value == 0b00100001) // 00100001 - 00000100 - 10000100 - 10100101
+            draw_1byte(&row, &col, pattern[0]);
+            draw_1byte(&row, &col, pattern[0]);
+        }
+        else if (value == 0b00100001) // 00100001 - 00000100 - 10000100 - 10100101
         {
             // 일단 위에 4바이트를 읽어서 그대로 복사
             uint8_t pattern[4] = {
@@ -188,41 +184,6 @@ void redraw()
             draw_1byte(&row, &col, pattern[1]);
             draw_1byte(&row, &col, pattern[2]);
             draw_1byte(&row, &col, pattern[3]);
-        }
-        else if (value == 0b01100010) // 01100010 : 일단 위에 2바이트를 4번 복사
-        {
-            uint8_t pattern[2] = {
-                build[build_pos - 2],
-                build[build_pos - 1]};
-
-            // Read dummy
-            read_uint8(reader); // 00101001
-
-            // 반복 (일단 5번)
-            for (int i = 0; i < 5; i++)
-            {
-                draw_1byte(&row, &col, pattern[0]);
-                draw_1byte(&row, &col, pattern[1]);
-            }
-        }
-        else if (value == 0b10100100) // 아래거 한줄을 복사: 10100100 - 11111111 - 01110110
-        {
-            uint8_t body[2];
-            read_bytes(reader, body, 2);
-
-            // 마지막 패턴이 01110110 가 아니면 일반 픽셀로 취급
-            if (body[1] != 0b01110110)
-            {
-                draw_1byte(&row, &col, value);
-                restore_pos();
-                continue;
-            }
-
-            // 반복 (일단 6번)
-            for (int i = 0; i < 6; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
         }
         else if (value == 0b01110000) // 다음거 하나를 1번 복사
         {
@@ -257,17 +218,57 @@ void redraw()
                 draw_1byte(&row, &col, body[0]);
             }
         }
-        // else if (value == 0b10100010) // 다음거 하나를 4번 복사
-        // {
-        //     uint8_t body[1];
-        //     read_bytes(reader, body, 1);
+        else if (value == 0b10100010) // 다음거 하나를 4번 복사
+        {
+            uint8_t body[2];
+            read_bytes(reader, body, 2);
 
-        //     // 반복 (일단 4번)
-        //     for (int i = 0; i < 4; i++)
-        //     {
-        //         draw_1byte(&row, &col, body[0]);
-        //     }
-        // }
+            // 마지막 패턴 검사
+            if ((body[1] & 0b10100000) != 0b10100000)
+            {
+                draw_1byte(&row, &col, value);
+                buf_rseek(reader, -2);
+                continue;
+            }
+
+            // 반복 (일단 4번)
+            for (int i = 0; i < 4; i++)
+            {
+                draw_1byte(&row, &col, body[0]);
+            }
+        }
+        else if (value == 0b10100011) // 다음거 하나를 5번 복사
+        {
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
+
+            // 반복 (일단 5번)
+            for (int i = 0; i < 5; i++)
+            {
+                draw_1byte(&row, &col, body[0]);
+            }
+        }
+        else if (value == 0b10100100) // 아래거 한줄을 6번 복사
+        {
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
+
+            // 패턴의 다음 데이터가 Instruction이 아니면 일반 픽셀로 취급
+            uint8_t check = read_uint8(reader);
+            bool is_instruction = (check & 0b10100000) || (check & 01110000);
+            if (!is_instruction)
+            {
+                draw_1byte(&row, &col, value);
+                buf_rseek(reader, -2);
+                continue;
+            }
+
+            // 반복 (일단 6번)
+            for (int i = 0; i < 6; i++)
+            {
+                draw_1byte(&row, &col, body[0]);
+            }
+        }
         else if (value == 0b01100001) // 01100001 - 2 bytes - 01110100
         {
             uint8_t pattern[2];
@@ -282,6 +283,25 @@ void redraw()
                 draw_1byte(&row, &col, pattern[0]);
                 draw_1byte(&row, &col, pattern[1]);
             }
+        }
+        else if (value == 0b01100010) // 01100010 : 일단 위에 2바이트를 4번 복사
+        {
+            uint8_t pattern[2] = {
+                build[build_pos - 2],
+                build[build_pos - 1]};
+
+            // Read dummy
+            read_uint8(reader); // 00101001
+
+            // 반복 (일단 5번)
+            for (int i = 0; i < 5; i++)
+            {
+                draw_1byte(&row, &col, pattern[0]);
+                draw_1byte(&row, &col, pattern[1]);
+            }
+        }
+        else if (value == 0b01110110) // 무시: 0b10100100 마지막에 옴
+        {
         }
         else
         {

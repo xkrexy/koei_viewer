@@ -35,6 +35,14 @@ void buf_seek(buf_reader_t *buf_reader, int32_t seek_pos)
     }
 }
 
+void buf_rseek(buf_reader_t *buf_reader, int32_t seek_amount)
+{
+    if (buf_reader)
+    {
+        buf_reader->seek_pos += seek_amount;
+    }
+}
+
 bool buf_end(buf_reader_t *buf_reader)
 {
     if (buf_reader)
