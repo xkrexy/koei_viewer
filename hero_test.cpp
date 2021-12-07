@@ -9,7 +9,7 @@
 const int ARG_WINDOW_WIDTH = 1280;
 const int ARG_WINDOW_HEIGHT = 800;
 
-static int _SCALE = 1;
+static int _SCALE = 8;
 
 SDL_Window *window = NULL;
 SDL_Surface *screenSurface = NULL;
@@ -100,6 +100,53 @@ void draw_zhaoyun()
     }
 }
 
+uint8_t build[10000] = {
+    0,
+};
+int build_pos = 0;
+
+void draw_1byte(int *row, int *col, uint8_t value)
+{
+    build[build_pos++] = value;
+    for (int i = 0; i < BITS_PER_BYTE; i++)
+    {
+        rgb_t color = black;
+        if ((value >> (7 - i)) & 0x01)
+        {
+            color = white;
+        }
+        put_pixel((*col) * 9 + i, (*row), color);
+    }
+    if ((*col) % 2 == 0)
+    {
+        *row = (*row) + 1;
+        if ((*row) > 79)
+        {
+            (*col) = (*col) + 1;
+            (*row) = 79;
+        }
+    }
+    else
+    {
+        (*row) = (*row) - 1;
+        if ((*row) < 0)
+        {
+            (*col) = (*col) + 1;
+            (*row) = 0;
+        }
+    }
+}
+
+static int _SAVE_POS = 0;
+void save_pos()
+{
+    _SAVE_POS = buf_get_seek_pos(reader);
+}
+void restore_pos()
+{
+    buf_seek(reader, _SAVE_POS);
+}
+
 void redraw()
 {
     screenSurface = SDL_GetWindowSurface(window);
@@ -112,225 +159,141 @@ void redraw()
     draw_zhaoyun();
 
     int _step = 0;
-    for (int i = 0; i < 8; i++)
+    int row = 0;
+    int col = 0;
+    build_pos = 0;
+
+    while (col < 8)
     {
-        for (int j = 0; j < 80; j++)
+        uint8_t value = read_uint8(reader);
+        save_pos();
+
+        printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN "\n", _step, BYTE_TO_BINARY(value));
+
+        if (value == 0b00100001) // 00100001 - 00000100 - 10000100 - 10100101
         {
-            uint8_t line = read_uint8(reader);
-            printf("%d: %02x (%d) / " BYTE_TO_BINARY_PATTERN "\n", _step, line, line, BYTE_TO_BINARY(line));
+            // 일단 위에 4바이트를 읽어서 그대로 복사
+            uint8_t pattern[4] = {
+                build[build_pos - 4],
+                build[build_pos - 3],
+                build[build_pos - 2],
+                build[build_pos - 1]};
 
-            int y = j;
+            // Read dummy
+            read_uint8(reader);
+            read_uint8(reader);
+            read_uint8(reader);
 
-            if (bit_from_bytes(&swapped, i))
+            draw_1byte(&row, &col, pattern[0]);
+            draw_1byte(&row, &col, pattern[1]);
+            draw_1byte(&row, &col, pattern[2]);
+            draw_1byte(&row, &col, pattern[3]);
+        }
+        else if (value == 0b01100010) // 01100010 : 일단 위에 2바이트를 4번 복사
+        {
+            uint8_t pattern[2] = {
+                build[build_pos - 2],
+                build[build_pos - 1]};
+
+            // Read dummy
+            read_uint8(reader); // 00101001
+
+            // 반복 (일단 5번)
+            for (int i = 0; i < 5; i++)
             {
-                y = 80 - j - 1;
+                draw_1byte(&row, &col, pattern[0]);
+                draw_1byte(&row, &col, pattern[1]);
             }
+        }
+        else if (value == 0b10100100) // 아래거 한줄을 복사: 10100100 - 11111111 - 01110110
+        {
+            uint8_t body[2];
+            read_bytes(reader, body, 2);
 
-            // 10100100 이면 뒤에 1바이트를 읽어 5번 반복(임시)
-            // if (line == 0xa4)
-            // {
-            //     uint8_t line1 = read_uint8(reader);
-            //     uint8_t line2 = read_uint8(reader); // 임시
-            //     int xxx = 5;
-            //     for (int count = 0; count < xxx; count++)
-            //     {
-            //         for (int b = 0; b < BITS_PER_BYTE; b++)
-            //         {
-            //             if ((line1 >> (7 - b)) & 0x01)
-            //             {
-            //                 put_pixel(i * 9 + b, y, white);
-            //             }
-            //             else
-            //             {
-            //                 put_pixel(i * 9 + b, y, black);
-            //             }
-            //         }
-            //         y++;
-            //     }
-            //     j += xxx - 1;
-            //     continue;
-            // }
-
-            // 0x21이면 기존 2개를 읽어 일단 6번 반복
-            if (line == 0x21)
+            // 마지막 패턴이 01110110 가 아니면 일반 픽셀로 취급
+            if (body[1] != 0b01110110)
             {
-                buf_seek(reader, buf_get_seek_pos(reader) - 3);
-                uint8_t line1 = read_uint8(reader);
-                uint8_t line2 = read_uint8(reader);
-                uint8_t line3 = read_uint8(reader); // 33
-                uint8_t line4 = read_uint8(reader); // 33
-                uint8_t line5 = read_uint8(reader); // 33
-                uint8_t line6 = read_uint8(reader); // 33
-                int xxx = 10;
-                for (int count = 0; count < xxx; count++)
-                {
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line1 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line2 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                }
-                j += xxx + 1;
-
-                continue;
-            }
-            // 10100011 이면 뒤에 1바이트를 읽어 4번 반복(임시)
-            if (line == 0xa3)
-            {
-                uint8_t line1 = read_uint8(reader);
-                int xxx = 4;
-                for (int count = 0; count < xxx; count++)
-                {
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line1 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                }
-                j += xxx - 1;
-                continue;
-            }
-            if (line == 0x62)
-            {
-                uint8_t line1 = read_uint8(reader);
-                uint8_t line2 = read_uint8(reader);
-                uint8_t line3 = read_uint8(reader); // 임시
-
-                printf("  S - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line));
-                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line1));
-                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line2));
-                printf("  E - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line3));
-
-                //int xxx = (line & 0x0f) + 1;
-                int xxx = 3;
-                for (int count = 0; count < xxx; count++)
-                {
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line1 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line2 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                }
-                j += xxx + 1;
-
+                draw_1byte(&row, &col, value);
+                restore_pos();
                 continue;
             }
 
-            // 01100010 이어도 뒤에 2바이트 읽음
-
-            // 01100001 이면 뒤에 2바이트를 읽어 2번 출력(임시)
-            // 가 아니라 0110 이면 우측4비트 + 1번 반복
-            //if ((line & 0x60) == 0x60)
-            if (line == 0x61)
+            // 반복 (일단 6번)
+            for (int i = 0; i < 6; i++)
             {
-                uint8_t line1 = read_uint8(reader);
-                uint8_t line2 = read_uint8(reader);
-                uint8_t line3 = read_uint8(reader); // 임시
-
-                printf("  S - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line));
-                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line1));
-                printf("    - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line2));
-                printf("  E - " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(line3));
-
-                //int xxx = (line & 0x0f) + 1;
-                int xxx = 2;
-                for (int count = 0; count < xxx; count++)
-                {
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line1 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                    for (int b = 0; b < BITS_PER_BYTE; b++)
-                    {
-                        if ((line2 >> (7 - b)) & 0x01)
-                        {
-                            put_pixel(i * 9 + b, y, white);
-                        }
-                        else
-                        {
-                            put_pixel(i * 9 + b, y, black);
-                        }
-                    }
-                    y++;
-                }
-                j += xxx + 1;
-
-                continue;
+                draw_1byte(&row, &col, body[0]);
             }
+        }
+        else if (value == 0b01110000) // 다음거 하나를 1번 복사
+        {
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
 
-            for (int b = 0; b < BITS_PER_BYTE; b++)
+            // 반복 (일단 1번)
+            for (int i = 0; i < 1; i++)
             {
-                if ((line >> (7 - b)) & 0x01)
-                {
-                    put_pixel(i * 9 + b, y, white);
-                }
-                else
-                {
-                    put_pixel(i * 9 + b, y, black);
-                }
+                draw_1byte(&row, &col, body[0]);
             }
+        }
+        else if (value == 0b10100000) // 다음거 하나를 2번 복사
+        {
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
 
-            _step++;
-            if (_step >= step)
+            // 반복 (일단 2번)
+            for (int i = 0; i < 2; i++)
             {
-                if (step_enabled)
-                {
-                    hline(y + 1, blue);
-                    goto end;
-                }
+                draw_1byte(&row, &col, body[0]);
+            }
+        }
+        else if (value == 0b10100001) // 다음거 하나를 3번 복사
+        {
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
+
+            // 반복 (일단 3번)
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, body[0]);
+            }
+        }
+        // else if (value == 0b10100010) // 다음거 하나를 4번 복사
+        // {
+        //     uint8_t body[1];
+        //     read_bytes(reader, body, 1);
+
+        //     // 반복 (일단 4번)
+        //     for (int i = 0; i < 4; i++)
+        //     {
+        //         draw_1byte(&row, &col, body[0]);
+        //     }
+        // }
+        else if (value == 0b01100001) // 01100001 - 2 bytes - 01110100
+        {
+            uint8_t pattern[2];
+            read_bytes(reader, pattern, 2);
+
+            // Read dummy
+            read_uint8(reader); // 01110100
+
+            // 반복 (일단 2번)
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern[0]);
+                draw_1byte(&row, &col, pattern[1]);
+            }
+        }
+        else
+        {
+            draw_1byte(&row, &col, value);
+        }
+        _step++;
+        if (_step >= step)
+        {
+            if (step_enabled)
+            {
+                hline(row, blue);
+                goto end;
             }
         }
     }
@@ -382,8 +345,8 @@ int main(int argc, char *argv[])
     }
 
     window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH * _SCALE,
-                              ARG_WINDOW_HEIGHT * _SCALE, SDL_WINDOW_SHOWN);
+                              SDL_WINDOWPOS_UNDEFINED, ARG_WINDOW_WIDTH,
+                              ARG_WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == NULL)
     {
         printf("SDL_CreateWindow error: %s\n", SDL_GetError());
