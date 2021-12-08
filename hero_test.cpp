@@ -6,8 +6,8 @@
 
 #define BITS_PER_BYTE (8)
 
-const int ARG_WINDOW_WIDTH = 1280;
-const int ARG_WINDOW_HEIGHT = 800;
+const int ARG_WINDOW_WIDTH = 320;
+const int ARG_WINDOW_HEIGHT = 200;
 
 static int _SCALE = 8;
 
@@ -137,10 +137,16 @@ void draw_1byte(int *row, int *col, uint8_t value)
     }
 }
 
+bool is_inst(uint8_t value) {
+    bool result = (value & 0b10100000) || (value & 01110000);
+    printf("    - Inst Check: " BYTE_TO_BINARY_PATTERN ": %d\n", BYTE_TO_BINARY(value), result);
+    return result;
+}
+
 void redraw()
 {
     screenSurface = SDL_GetWindowSurface(window);
-    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0x00, 0x00));
+    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xff, 0x00, 0x00));
 
     buf_seek(reader, header);
 
@@ -220,16 +226,8 @@ void redraw()
         }
         else if (value == 0b10100010) // 다음거 하나를 4번 복사
         {
-            uint8_t body[2];
-            read_bytes(reader, body, 2);
-
-            // 마지막 패턴 검사
-            if ((body[1] & 0b10100000) != 0b10100000)
-            {
-                draw_1byte(&row, &col, value);
-                buf_rseek(reader, -2);
-                continue;
-            }
+            uint8_t body[1];
+            read_bytes(reader, body, 1);
 
             // 반복 (일단 4번)
             for (int i = 0; i < 4; i++)
@@ -253,10 +251,16 @@ void redraw()
             uint8_t body[1];
             read_bytes(reader, body, 1);
 
+            // 패턴이 Instruction 이면 일반픽셀로 처리(?)
+            if (is_inst(body[0])) {
+                draw_1byte(&row, &col, value);
+                buf_rseek(reader, -1);
+                continue;
+            }
+
             // 패턴의 다음 데이터가 Instruction이 아니면 일반 픽셀로 취급
             uint8_t check = read_uint8(reader);
-            bool is_instruction = (check & 0b10100000) || (check & 01110000);
-            if (!is_instruction)
+            if (!is_inst(check))
             {
                 draw_1byte(&row, &col, value);
                 buf_rseek(reader, -2);
