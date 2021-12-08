@@ -6,8 +6,8 @@
 
 #define BITS_PER_BYTE (8)
 
-const int ARG_WINDOW_WIDTH = 320;
-const int ARG_WINDOW_HEIGHT = 200;
+const int ARG_WINDOW_WIDTH = 1280;
+const int ARG_WINDOW_HEIGHT = 800;
 
 static int _SCALE = 8;
 
@@ -137,10 +137,18 @@ void draw_1byte(int *row, int *col, uint8_t value)
     }
 }
 
-bool is_inst(uint8_t value) {
-    bool result = (value & 0b10100000) || (value & 01110000);
-    printf("    - Inst Check: " BYTE_TO_BINARY_PATTERN ": %d\n", BYTE_TO_BINARY(value), result);
-    return result;
+uint8_t _read_uint8()
+{
+    int32_t pos = buf_get_seek_pos(reader);
+    uint8_t value = read_uint8(reader);
+    printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN " (%02X)\n", pos, BYTE_TO_BINARY(value), value);
+    return value;
+}
+
+uint8_t _read_uint8_relative(int32_t pos)
+{
+    uint8_t value = reader->buf[reader->seek_pos + pos - 1];
+    return value;
 }
 
 void redraw()
@@ -161,18 +169,149 @@ void redraw()
 
     while (col < 8)
     {
-        uint8_t value = read_uint8(reader);
+        uint8_t value = _read_uint8();
 
-        printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN "\n", _step, BYTE_TO_BINARY(value));
-        if (value == 0b01111110) // 바로 직전 바이트를 2번 복사
+        // A1 XX A4 XX A2 XX A1 XX 7E
+        if (value == 0b10100001 &&                   // A1
+            _read_uint8_relative(2) == 0b10100100 && // A4
+            _read_uint8_relative(4) == 0b10100010 && // A2
+            _read_uint8_relative(6) == 0b10100001 && // A1
+            _read_uint8_relative(8) == 0b01111110    // 7E
+        )
         {
-            uint8_t pattern[1] = {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            uint8_t pattern1 = _read_uint8_relative(3);
+            uint8_t pattern2 = _read_uint8_relative(5);
+            uint8_t pattern3 = _read_uint8_relative(7);
+            buf_rseek(reader, 9);
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern1);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern2);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern3);
+            }
+        }
+        else if (value == 0b10100001 &&                   // A1
+                 _read_uint8_relative(2) == 0b10100000 && // A0
+                 _read_uint8_relative(4) == 0b01110000    // 70
+        )
+        {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            uint8_t pattern1 = _read_uint8_relative(3);
+            buf_rseek(reader, 4);
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        else if (value == 0b10100000 && _read_uint8_relative(2) == 0b01110000) // A0 70
+        {
+            uint8_t pattern0 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+            }
+        }
+        // 패턴 1바이트 반복
+        else if (value == 0b10100100 && _read_uint8_relative(2) == 0b01110110) // A4 76
+        {
+            uint8_t pattern0 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 6; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+            }
+        }
+        // 패턴 2바이트 2번 반복
+        else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110110) // 61 76
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 패턴 2바이트 2번 반복
+        else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110100) // 61 74
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 패턴 2바이트 3번 반복
+        else if (value == 0b01100010 && _read_uint8_relative(3) == 0b00101001) // 62 29
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 위에 12바이트를 그대로 복사
+        else if (value == 0b00001100 && _read_uint8_relative(1) == 0b01110011) // 0C 73
+        {
+            // 일단 위에 4바이트를 읽어서 그대로 복사
+            uint8_t pattern[12] = {
+                build[build_pos - 12],
+                build[build_pos - 11],
+                build[build_pos - 10],
+                build[build_pos - 9],
+                build[build_pos - 8],
+                build[build_pos - 7],
+                build[build_pos - 6],
+                build[build_pos - 5],
+                build[build_pos - 4],
+                build[build_pos - 3],
+                build[build_pos - 2],
                 build[build_pos - 1]};
 
-            draw_1byte(&row, &col, pattern[0]);
-            draw_1byte(&row, &col, pattern[0]);
+            // Read dummy
+            _read_uint8();
+
+            for (int i = 0; i < 12; i++)
+            {
+                draw_1byte(&row, &col, pattern[i]);
+            }
         }
-        else if (value == 0b00100001) // 00100001 - 00000100 - 10000100 - 10100101
+        else if (value == 0b00100001 && _read_uint8_relative(3) == 0b10100101) // 21 A5
         {
             // 일단 위에 4바이트를 읽어서 그대로 복사
             uint8_t pattern[4] = {
@@ -182,135 +321,31 @@ void redraw()
                 build[build_pos - 1]};
 
             // Read dummy
-            read_uint8(reader);
-            read_uint8(reader);
-            read_uint8(reader);
+            _read_uint8();
+            _read_uint8();
+            _read_uint8();
 
             draw_1byte(&row, &col, pattern[0]);
             draw_1byte(&row, &col, pattern[1]);
             draw_1byte(&row, &col, pattern[2]);
             draw_1byte(&row, &col, pattern[3]);
-        }
-        else if (value == 0b01110000) // 다음거 하나를 1번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
 
-            // 반복 (일단 1번)
-            for (int i = 0; i < 1; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b10100000) // 다음거 하나를 2번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
-
-            // 반복 (일단 2번)
-            for (int i = 0; i < 2; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b10100001) // 다음거 하나를 3번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
-
-            // 반복 (일단 3번)
-            for (int i = 0; i < 3; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b10100010) // 다음거 하나를 4번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
-
-            // 반복 (일단 4번)
-            for (int i = 0; i < 4; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b10100011) // 다음거 하나를 5번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
-
-            // 반복 (일단 5번)
-            for (int i = 0; i < 5; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b10100100) // 아래거 한줄을 6번 복사
-        {
-            uint8_t body[1];
-            read_bytes(reader, body, 1);
-
-            // 패턴이 Instruction 이면 일반픽셀로 처리(?)
-            if (is_inst(body[0])) {
-                draw_1byte(&row, &col, value);
-                buf_rseek(reader, -1);
-                continue;
-            }
-
-            // 패턴의 다음 데이터가 Instruction이 아니면 일반 픽셀로 취급
-            uint8_t check = read_uint8(reader);
-            if (!is_inst(check))
-            {
-                draw_1byte(&row, &col, value);
-                buf_rseek(reader, -2);
-                continue;
-            }
-
-            // 반복 (일단 6번)
-            for (int i = 0; i < 6; i++)
-            {
-                draw_1byte(&row, &col, body[0]);
-            }
-        }
-        else if (value == 0b01100001) // 01100001 - 2 bytes - 01110100
-        {
-            uint8_t pattern[2];
-            read_bytes(reader, pattern, 2);
-
-            // Read dummy
-            read_uint8(reader); // 01110100
-
-            // 반복 (일단 2번)
-            for (int i = 0; i < 2; i++)
-            {
-                draw_1byte(&row, &col, pattern[0]);
-                draw_1byte(&row, &col, pattern[1]);
-            }
-        }
-        else if (value == 0b01100010) // 01100010 : 일단 위에 2바이트를 4번 복사
-        {
-            uint8_t pattern[2] = {
+            uint8_t pattern2[2] = {
                 build[build_pos - 2],
                 build[build_pos - 1]};
 
-            // Read dummy
-            read_uint8(reader); // 00101001
-
-            // 반복 (일단 5번)
+            // 마지막 2바이트를 5회 복사
             for (int i = 0; i < 5; i++)
             {
-                draw_1byte(&row, &col, pattern[0]);
-                draw_1byte(&row, &col, pattern[1]);
+                draw_1byte(&row, &col, pattern2[0]);
+                draw_1byte(&row, &col, pattern2[1]);
             }
-        }
-        else if (value == 0b01110110) // 무시: 0b10100100 마지막에 옴
-        {
         }
         else
         {
             draw_1byte(&row, &col, value);
         }
+
         _step++;
         if (_step >= step)
         {
