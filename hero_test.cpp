@@ -36,7 +36,7 @@ void hline(int y, rgb_t rgb)
 }
 
 int header = 27;
-int step = 0;
+int step = 390;
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)       \
@@ -53,8 +53,18 @@ rgb_t white = {0xff, 0xff, 0xff};
 rgb_t black = {0, 0, 0};
 rgb_t blue = {0, 0, 0xff};
 
-// 01100001
-// 11010111
+int g_inst_count[256] = {
+    0,
+};
+void inc_inst(int num)
+{
+    g_inst_count[num]++;
+}
+
+int inst_count(int num)
+{
+    return g_inst_count[num];
+}
 
 void draw_zhaoyun()
 {
@@ -88,6 +98,8 @@ void draw_zhaoyun()
 
             int gap = (j / 8);
 
+            gap = 0;
+
             if (index & 0x01)
             {
                 put_pixel(9 * 8 + 1 + j + gap, i, white);
@@ -115,7 +127,7 @@ void draw_1byte(int *row, int *col, uint8_t value)
         {
             color = white;
         }
-        put_pixel((*col) * 9 + i, (*row), color);
+        put_pixel((*col) * 8 + i, (*row), color);
     }
     if ((*col) % 2 == 0)
     {
@@ -157,6 +169,7 @@ void redraw()
     SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xff, 0x00, 0x00));
 
     buf_seek(reader, header);
+    memset(g_inst_count, 0, 256 * 4);
 
     uint8_t swapped = 0x54;
 
@@ -183,17 +196,17 @@ void redraw()
             uint8_t pattern1 = _read_uint8_relative(3);
             uint8_t pattern2 = _read_uint8_relative(5);
             uint8_t pattern3 = _read_uint8_relative(7);
-            buf_rseek(reader, 9);
+            buf_rseek(reader, 8);
 
             for (int i = 0; i < 3; i++)
             {
                 draw_1byte(&row, &col, pattern0);
             }
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 6; i++)
             {
                 draw_1byte(&row, &col, pattern1);
             }
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 draw_1byte(&row, &col, pattern2);
             }
@@ -201,6 +214,101 @@ void redraw()
             {
                 draw_1byte(&row, &col, pattern3);
             }
+            // 00110110 무시됨
+        }
+        else if (value == 0b01100010 &&                   // 62
+                 _read_uint8_relative(3) == 0b01100001 && // 61
+                 _read_uint8_relative(6) == 0b01110100    // 74
+        )
+        {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            uint8_t pattern1 = _read_uint8_relative(2);
+            uint8_t pattern2 = _read_uint8_relative(4);
+            uint8_t pattern3 = _read_uint8_relative(5);
+            buf_rseek(reader, 6);
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern2);
+                draw_1byte(&row, &col, pattern3);
+            }
+        }
+        else if (value == 0b10100011 &&                   // A3
+                 _read_uint8_relative(2) == 0b01100001 && // 61
+                 _read_uint8_relative(5) == 0b01111111    // 7F
+        )
+        {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            uint8_t pattern1 = _read_uint8_relative(3);
+            uint8_t pattern2 = _read_uint8_relative(4);
+            buf_rseek(reader, 5);
+
+            // 패턴0을 5회 반복
+            for (int i = 0; i < 5; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+            }
+
+            // 패턴 1/2 를 2회 반복
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern1);
+                draw_1byte(&row, &col, pattern2);
+            }
+        }
+        else if (value == 0b10100000 &&                   // A0
+                 _read_uint8_relative(1) == 0b11111000 && // F8
+                 _read_uint8_relative(2) == 0b01110010)   // 72
+        {
+            buf_rseek(reader, 2);
+
+            // 2번씩?
+            draw_1byte(&row, &col, 0xf8);
+            draw_1byte(&row, &col, 0xf8);
+        }
+        else if (value == 0b10100000 &&                   // A0
+                 _read_uint8_relative(2) == 0b10100000 && // A0
+                 _read_uint8_relative(4) == 0b01110100)   // 74
+        {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            uint8_t pattern1 = _read_uint8_relative(3);
+            buf_rseek(reader, 4);
+
+            // 2번씩?
+            draw_1byte(&row, &col, pattern0);
+            draw_1byte(&row, &col, pattern0);
+            draw_1byte(&row, &col, pattern1);
+            draw_1byte(&row, &col, pattern1);
+        }
+        else if (value == 0b10100000 &&                   // A0
+                 _read_uint8_relative(1) == 0b01111111 && // 7F
+                 _read_uint8_relative(2) == 0b01110100)   // 74
+        {
+            // 1바이트를 읽어서 2번 반복
+            uint8_t pattern = _read_uint8();
+            draw_1byte(&row, &col, pattern);
+            draw_1byte(&row, &col, pattern);
+
+            _read_uint8();
+        }
+        else if (value == 0b10100000 &&                   // A0
+                 _read_uint8_relative(1) == 0b00000101 && // 05
+                 _read_uint8_relative(2) == 0b01111100    // 7C
+        )
+        {
+            uint8_t pattern0 = _read_uint8_relative(1);
+            buf_rseek(reader, 2);
+
+            // A0 05 를 그냥 출력
+
+            draw_1byte(&row, &col, 0xa0);
+            draw_1byte(&row, &col, 0x05);
         }
         else if (value == 0b10100001 &&                   // A1
                  _read_uint8_relative(2) == 0b10100000 && // A0
@@ -218,6 +326,17 @@ void redraw()
             for (int i = 0; i < 2; i++)
             {
                 draw_1byte(&row, &col, pattern1);
+            }
+        }
+        else if (value == 0b10100101 && _read_uint8_relative(2) == 0b01111100) // A5 7C
+        {
+            uint8_t pattern0 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 7; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
             }
         }
         else if (value == 0b10100000 && _read_uint8_relative(2) == 0b01110000) // A0 70
@@ -243,8 +362,66 @@ void redraw()
                 draw_1byte(&row, &col, pattern0);
             }
         }
+        // 패턴 1번 반복
+        else if (value == 0b01100101 && _read_uint8_relative(5) == 0b01110001) // 65 71
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+            uint8_t pattern2 = _read_uint8();
+            uint8_t pattern3 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            draw_1byte(&row, &col, 0x65);
+            draw_1byte(&row, &col, pattern0);
+            draw_1byte(&row, &col, pattern1);
+            draw_1byte(&row, &col, pattern2);
+            draw_1byte(&row, &col, pattern3);
+        }
+        // 패턴 2바이트 3번 반복
+        else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01111111) // 61 7F
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
         // 패턴 2바이트 2번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110110) // 61 76
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 패턴 2바이트 2번 반복
+        else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110111) // 61 77
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 2; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 패턴 2바이트 2번 반복
+        else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01111110) // 61 7E
         {
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
@@ -285,6 +462,34 @@ void redraw()
                 draw_1byte(&row, &col, pattern1);
             }
         }
+        // 패턴 2바이트 3번 반복
+        else if (value == 0b01100010 && _read_uint8_relative(3) == 0b01111100) // 62 7C
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
+        // 패턴 2바이트 3번 반복
+        else if (value == 0b01100010 && _read_uint8_relative(3) == 0b01111111) // 62 7F
+        {
+            uint8_t pattern0 = _read_uint8();
+            uint8_t pattern1 = _read_uint8();
+
+            uint8_t end = _read_uint8();
+
+            for (int i = 0; i < 3; i++)
+            {
+                draw_1byte(&row, &col, pattern0);
+                draw_1byte(&row, &col, pattern1);
+            }
+        }
         // 위에 12바이트를 그대로 복사
         else if (value == 0b00001100 && _read_uint8_relative(1) == 0b01110011) // 0C 73
         {
@@ -310,6 +515,14 @@ void redraw()
             {
                 draw_1byte(&row, &col, pattern[i]);
             }
+        }
+        else if (value == 0b00100001 && _read_uint8_relative(1) == 0b00001101) // 21 0D
+        {
+            _read_uint8();
+            draw_1byte(&row, &col, 0b00101010);
+            draw_1byte(&row, &col, 0b01010101);
+            draw_1byte(&row, &col, 0b00101010);
+            draw_1byte(&row, &col, 0b01010101);
         }
         else if (value == 0b00100001 && _read_uint8_relative(3) == 0b10100101) // 21 A5
         {
@@ -339,6 +552,113 @@ void redraw()
             {
                 draw_1byte(&row, &col, pattern2[0]);
                 draw_1byte(&row, &col, pattern2[1]);
+            }
+        }
+        else if (value == 0b10011111 && _read_uint8_relative(1) == 0b01111010) // 9F 7A
+        {
+            // 9F 7A는 그냥 9F
+            draw_1byte(&row, &col, 0x9F);
+            _read_uint8();
+        }
+        else if (value == 0b00000101 && _read_uint8_relative(1) == 0b01110111) // 05 77
+        {
+            _read_uint8();
+            draw_1byte(&row, &col, 0x01);
+            draw_1byte(&row, &col, 0x01);
+        }
+        else if (value == 0b10000001 && _read_uint8_relative(1) == 0b01011010) // 81 5A
+        {
+            _read_uint8();
+            draw_1byte(&row, &col, 0xaa);
+            draw_1byte(&row, &col, 0x55);
+            draw_1byte(&row, &col, 0xaa);
+            draw_1byte(&row, &col, 0x55);
+        }
+        else if (value == 0b10101010 && _read_uint8_relative(1) == 0b01110110) // AA 76
+        {
+            _read_uint8();
+            draw_1byte(&row, &col, 0xaa);
+        }
+        else if (value == 0b00000110 && _read_uint8_relative(1) == 0b01110110) // 06 76
+        {
+            _read_uint8();
+            draw_1byte(&row, &col, 0xff);
+            draw_1byte(&row, &col, 0xff);
+        }
+        else if (value == 0b00100000 &&                   // 20
+                 _read_uint8_relative(1) == 0b10001101 && // 8D
+                 _read_uint8_relative(2) == 0b01111111)   // 7F
+        {
+            buf_rseek(reader, 2);
+
+            draw_1byte(&row, &col, 0x01);
+            draw_1byte(&row, &col, 0x02);
+            draw_1byte(&row, &col, 0x01);
+        }
+        else if (value == 0b00100000 &&                   // 20
+                 _read_uint8_relative(1) == 0b00100001 && // 21
+                 _read_uint8_relative(2) == 0b01110010)   // 72
+        {
+            buf_rseek(reader, 3);
+            draw_1byte(&row, &col, 0x54);
+            draw_1byte(&row, &col, 0xaa);
+            draw_1byte(&row, &col, 0x54);
+            draw_1byte(&row, &col, 0xea);
+        }
+        else if (value == 0b00000110 && _read_uint8_relative(1) == 0b01110101) // 06 75
+        {
+            buf_rseek(reader, 1);
+            draw_1byte(&row, &col, 0xff);
+            draw_1byte(&row, &col, 0xff);
+        }
+        else if (value == 0b00000110) // 06
+        {
+            inc_inst(value);
+            printf("Inst Count: %d\n", inst_count(value));
+
+            if (inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
+            {
+                // 두 번째 06 은 흰 줄 2개
+                draw_1byte(&row, &col, 0xff);
+                draw_1byte(&row, &col, 0xff);
+            }
+            else
+            {
+                draw_1byte(&row, &col, value);
+            }
+        }
+        else if (value == 0b01111010) // 7A
+        {
+            inc_inst(value);
+            printf("Inst Count: %d\n", inst_count(value));
+
+            // Draw Count
+            if (inst_count(value) == 1 || inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
+            {
+                // draw_1byte(&row, &col, value);
+            }
+        }
+        else if (value == 0b01111101) // 7D
+        {
+            inc_inst(value);
+            printf("Inst Count: %d\n", inst_count(value));
+
+            // Draw Count
+            if (inst_count(value) == 1 || inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
+            {
+                draw_1byte(&row, &col, value);
+            }
+        }
+        else if (value == 0b01111111) // 7F
+        {
+            inc_inst(value);
+            printf("Inst Count: %d\n", inst_count(value));
+
+            // 4번째는 그림
+            if (inst_count(value) == 4 || inst_count(value) == 5 ||
+                inst_count(value) == 8 || inst_count(value) == 9 || inst_count(value) == 10 || inst_count(value) == 11 || inst_count(value) == 16)
+            {
+                draw_1byte(&row, &col, value);
             }
         }
         else
