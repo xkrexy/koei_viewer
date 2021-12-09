@@ -566,6 +566,36 @@ void redraw()
             draw_1byte(&row, &col, 0x01);
             draw_1byte(&row, &col, 0x01);
         }
+        /*
+        [569] Byte: 0b01100001 (61)
+        [570] Byte: 0b10001111 (8F)
+        [571] Byte: 0b01011010 (5A)
+        [572] Byte: 0b10001011 (8B)
+        [573] Byte: 0b01011010 (5A)
+        [574] Byte: 0b01110000 (70)
+        */
+        else if (value == 0b01100001 &&                   // 61
+                 _read_uint8_relative(1) == 0b10001111 && // 8F
+                 _read_uint8_relative(2) == 0b01011010 && // 5A
+                 _read_uint8_relative(3) == 0b10001011 && // 8B
+                 _read_uint8_relative(4) == 0b01011010 && // 5A
+                 _read_uint8_relative(5) == 0b01110000)   // 70
+        {
+            buf_rseek(reader, 5);
+
+            for (int i = 0; i < 15 + 2; i++)
+            {
+                draw_1byte(&row, &col, 0x55);
+                draw_1byte(&row, &col, 0xaa);
+            }
+            for (int i = 0; i < 11 + 2; i++)
+            {
+                draw_1byte(&row, &col, 0x55);
+                draw_1byte(&row, &col, 0xaa);
+            }
+            draw_1byte(&row, &col, 0x55);
+            draw_1byte(&row, &col, 0xaa);
+        }
         else if (value == 0b10000001 && _read_uint8_relative(1) == 0b01011010) // 81 5A
         {
             _read_uint8();
@@ -647,6 +677,19 @@ void redraw()
             if (inst_count(value) == 1 || inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
             {
                 draw_1byte(&row, &col, value);
+            }
+        }
+        else if (value == 0b00100011) // 23
+        {
+            inc_inst(value);
+            printf("Inst Count: %d\n", inst_count(value));
+            if (inst_count(value) == 3)
+            {
+                draw_1byte(&row, &col, 0x2a);
+            }
+            else
+            {
+                draw_1byte(&row, &col, 0x23);
             }
         }
         else if (value == 0b01111111) // 7F
