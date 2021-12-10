@@ -36,7 +36,7 @@ void hline(int y, rgb_t rgb)
 }
 
 int header = 27;
-int step = 390;
+int step = 457;
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)       \
@@ -153,7 +153,7 @@ uint8_t _read_uint8()
 {
     int32_t pos = buf_get_seek_pos(reader);
     uint8_t value = read_uint8(reader);
-    printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN " (%02X)\n", pos, BYTE_TO_BINARY(value), value);
+    // printf("[%03d] Byte: " BYTE_TO_BINARY_PATTERN " (%02X)\n", pos, BYTE_TO_BINARY(value), value);
     return value;
 }
 
@@ -161,6 +161,12 @@ uint8_t _read_uint8_relative(int32_t pos)
 {
     uint8_t value = reader->buf[reader->seek_pos + pos - 1];
     return value;
+}
+
+void PRINT_INST(const char *inst)
+{
+    int32_t seek_pos = buf_get_seek_pos(reader) - 1;
+    printf("%s : 0x%04X - 0x%04X\n", inst, seek_pos, seek_pos + 3);
 }
 
 void redraw()
@@ -192,6 +198,7 @@ void redraw()
             _read_uint8_relative(8) == 0b01111110    // 7E
         )
         {
+            PRINT_INST("A1 ~ 7E");
             uint8_t pattern0 = _read_uint8_relative(1);
             uint8_t pattern1 = _read_uint8_relative(3);
             uint8_t pattern2 = _read_uint8_relative(5);
@@ -221,6 +228,7 @@ void redraw()
                  _read_uint8_relative(6) == 0b01110100    // 74
         )
         {
+            PRINT_INST("62 61 74");
             uint8_t pattern0 = _read_uint8_relative(1);
             uint8_t pattern1 = _read_uint8_relative(2);
             uint8_t pattern2 = _read_uint8_relative(4);
@@ -244,6 +252,7 @@ void redraw()
                  _read_uint8_relative(5) == 0b01111111    // 7F
         )
         {
+            PRINT_INST("A3 61 7F");
             uint8_t pattern0 = _read_uint8_relative(1);
             uint8_t pattern1 = _read_uint8_relative(3);
             uint8_t pattern2 = _read_uint8_relative(4);
@@ -266,6 +275,7 @@ void redraw()
                  _read_uint8_relative(1) == 0b11111000 && // F8
                  _read_uint8_relative(2) == 0b01110010)   // 72
         {
+            PRINT_INST("A0 F8 72");
             buf_rseek(reader, 2);
 
             // 2번씩?
@@ -276,6 +286,7 @@ void redraw()
                  _read_uint8_relative(2) == 0b10100000 && // A0
                  _read_uint8_relative(4) == 0b01110100)   // 74
         {
+            PRINT_INST("A0 A0 74");
             uint8_t pattern0 = _read_uint8_relative(1);
             uint8_t pattern1 = _read_uint8_relative(3);
             buf_rseek(reader, 4);
@@ -290,6 +301,7 @@ void redraw()
                  _read_uint8_relative(1) == 0b01111111 && // 7F
                  _read_uint8_relative(2) == 0b01110100)   // 74
         {
+            PRINT_INST("A0 7F 74");
             // 1바이트를 읽어서 2번 반복
             uint8_t pattern = _read_uint8();
             draw_1byte(&row, &col, pattern);
@@ -302,6 +314,7 @@ void redraw()
                  _read_uint8_relative(2) == 0b01111100    // 7C
         )
         {
+            PRINT_INST("A0 05 7C");
             uint8_t pattern0 = _read_uint8_relative(1);
             buf_rseek(reader, 2);
 
@@ -315,6 +328,7 @@ void redraw()
                  _read_uint8_relative(4) == 0b01110000    // 70
         )
         {
+            PRINT_INST("A1 A0 70");
             uint8_t pattern0 = _read_uint8_relative(1);
             uint8_t pattern1 = _read_uint8_relative(3);
             buf_rseek(reader, 4);
@@ -330,6 +344,7 @@ void redraw()
         }
         else if (value == 0b10100101 && _read_uint8_relative(2) == 0b01111100) // A5 7C
         {
+            PRINT_INST("A5 7C");
             uint8_t pattern0 = _read_uint8();
 
             uint8_t end = _read_uint8();
@@ -341,6 +356,7 @@ void redraw()
         }
         else if (value == 0b10100000 && _read_uint8_relative(2) == 0b01110000) // A0 70
         {
+            PRINT_INST("A0 70");
             uint8_t pattern0 = _read_uint8();
 
             uint8_t end = _read_uint8();
@@ -353,6 +369,7 @@ void redraw()
         // 패턴 1바이트 반복
         else if (value == 0b10100100 && _read_uint8_relative(2) == 0b01110110) // A4 76
         {
+            PRINT_INST("A4 76");
             uint8_t pattern0 = _read_uint8();
 
             uint8_t end = _read_uint8();
@@ -365,6 +382,7 @@ void redraw()
         // 패턴 1번 반복
         else if (value == 0b01100101 && _read_uint8_relative(5) == 0b01110001) // 65 71
         {
+            PRINT_INST("65 71");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
             uint8_t pattern2 = _read_uint8();
@@ -381,6 +399,7 @@ void redraw()
         // 패턴 2바이트 3번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01111111) // 61 7F
         {
+            PRINT_INST("61 7F");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -395,6 +414,7 @@ void redraw()
         // 패턴 2바이트 2번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110110) // 61 76
         {
+            PRINT_INST("61 76");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -409,6 +429,7 @@ void redraw()
         // 패턴 2바이트 2번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110111) // 61 77
         {
+            PRINT_INST("61 77");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -423,6 +444,7 @@ void redraw()
         // 패턴 2바이트 2번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01111110) // 61 7E
         {
+            PRINT_INST("61 7E");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -437,6 +459,7 @@ void redraw()
         // 패턴 2바이트 2번 반복
         else if (value == 0b01100001 && _read_uint8_relative(3) == 0b01110100) // 61 74
         {
+            PRINT_INST("61 74");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -449,8 +472,10 @@ void redraw()
             }
         }
         // 패턴 2바이트 3번 반복
-        else if (value == 0b01100010 && _read_uint8_relative(3) == 0b00101001) // 62 29
+        else if (value == 0b01100010 && _read_uint8_relative(3) == 0b00101001 &&
+                 _read_uint8_relative(5) == 0b01110011) // 62 29 73
         {
+            PRINT_INST("62 29");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -465,6 +490,7 @@ void redraw()
         // 패턴 2바이트 3번 반복
         else if (value == 0b01100010 && _read_uint8_relative(3) == 0b01111100) // 62 7C
         {
+            PRINT_INST("62 7C");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -479,6 +505,7 @@ void redraw()
         // 패턴 2바이트 3번 반복
         else if (value == 0b01100010 && _read_uint8_relative(3) == 0b01111111) // 62 7F
         {
+            PRINT_INST("62 7F");
             uint8_t pattern0 = _read_uint8();
             uint8_t pattern1 = _read_uint8();
 
@@ -493,6 +520,7 @@ void redraw()
         // 위에 12바이트를 그대로 복사
         else if (value == 0b00001100 && _read_uint8_relative(1) == 0b01110011) // 0C 73
         {
+            PRINT_INST("0C 73");
             // 일단 위에 4바이트를 읽어서 그대로 복사
             uint8_t pattern[12] = {
                 build[build_pos - 12],
@@ -518,6 +546,7 @@ void redraw()
         }
         else if (value == 0b00100001 && _read_uint8_relative(1) == 0b00001101) // 21 0D
         {
+            PRINT_INST("21 0D");
             _read_uint8();
             draw_1byte(&row, &col, 0b00101010);
             draw_1byte(&row, &col, 0b01010101);
@@ -526,6 +555,7 @@ void redraw()
         }
         else if (value == 0b00100001 && _read_uint8_relative(3) == 0b10100101) // 21 A5
         {
+            PRINT_INST("21 A5");
             // 일단 위에 4바이트를 읽어서 그대로 복사
             uint8_t pattern[4] = {
                 build[build_pos - 4],
@@ -556,12 +586,14 @@ void redraw()
         }
         else if (value == 0b10011111 && _read_uint8_relative(1) == 0b01111010) // 9F 7A
         {
+            PRINT_INST("9F 7A");
             // 9F 7A는 그냥 9F
             draw_1byte(&row, &col, 0x9F);
             _read_uint8();
         }
         else if (value == 0b00000101 && _read_uint8_relative(1) == 0b01110111) // 05 77
         {
+            PRINT_INST("05 77");
             _read_uint8();
             draw_1byte(&row, &col, 0x01);
             draw_1byte(&row, &col, 0x01);
@@ -581,6 +613,7 @@ void redraw()
                  _read_uint8_relative(4) == 0b01011010 && // 5A
                  _read_uint8_relative(5) == 0b01110000)   // 70
         {
+            PRINT_INST("61 ~ 70");
             buf_rseek(reader, 5);
 
             for (int i = 0; i < 15 + 2; i++)
@@ -598,6 +631,7 @@ void redraw()
         }
         else if (value == 0b10000001 && _read_uint8_relative(1) == 0b01011010) // 81 5A
         {
+            PRINT_INST("81 5A");
             _read_uint8();
             draw_1byte(&row, &col, 0xaa);
             draw_1byte(&row, &col, 0x55);
@@ -606,11 +640,13 @@ void redraw()
         }
         else if (value == 0b10101010 && _read_uint8_relative(1) == 0b01110110) // AA 76
         {
+            PRINT_INST("AA 76");
             _read_uint8();
             draw_1byte(&row, &col, 0xaa);
         }
         else if (value == 0b00000110 && _read_uint8_relative(1) == 0b01110110) // 06 76
         {
+            PRINT_INST("06 76");
             _read_uint8();
             draw_1byte(&row, &col, 0xff);
             draw_1byte(&row, &col, 0xff);
@@ -619,6 +655,7 @@ void redraw()
                  _read_uint8_relative(1) == 0b10001101 && // 8D
                  _read_uint8_relative(2) == 0b01111111)   // 7F
         {
+            PRINT_INST("20 8D 7F");
             buf_rseek(reader, 2);
 
             draw_1byte(&row, &col, 0x01);
@@ -629,6 +666,7 @@ void redraw()
                  _read_uint8_relative(1) == 0b00100001 && // 21
                  _read_uint8_relative(2) == 0b01110010)   // 72
         {
+            PRINT_INST("20 21 72");
             buf_rseek(reader, 3);
             draw_1byte(&row, &col, 0x54);
             draw_1byte(&row, &col, 0xaa);
@@ -637,6 +675,7 @@ void redraw()
         }
         else if (value == 0b00000110 && _read_uint8_relative(1) == 0b01110101) // 06 75
         {
+            PRINT_INST("06 75");
             buf_rseek(reader, 1);
             draw_1byte(&row, &col, 0xff);
             draw_1byte(&row, &col, 0xff);
@@ -644,7 +683,6 @@ void redraw()
         else if (value == 0b00000110) // 06
         {
             inc_inst(value);
-            printf("Inst Count: %d\n", inst_count(value));
 
             if (inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
             {
@@ -660,7 +698,6 @@ void redraw()
         else if (value == 0b01111010) // 7A
         {
             inc_inst(value);
-            printf("Inst Count: %d\n", inst_count(value));
 
             // Draw Count
             if (inst_count(value) == 1 || inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
@@ -671,7 +708,6 @@ void redraw()
         else if (value == 0b01111101) // 7D
         {
             inc_inst(value);
-            printf("Inst Count: %d\n", inst_count(value));
 
             // Draw Count
             if (inst_count(value) == 1 || inst_count(value) == 2 || inst_count(value) == 3 || inst_count(value) == 4)
@@ -682,7 +718,6 @@ void redraw()
         else if (value == 0b00100011) // 23
         {
             inc_inst(value);
-            printf("Inst Count: %d\n", inst_count(value));
             if (inst_count(value) == 3)
             {
                 draw_1byte(&row, &col, 0x2a);
@@ -695,7 +730,6 @@ void redraw()
         else if (value == 0b01111111) // 7F
         {
             inc_inst(value);
-            printf("Inst Count: %d\n", inst_count(value));
 
             // 4번째는 그림
             if (inst_count(value) == 4 || inst_count(value) == 5 ||
@@ -778,6 +812,7 @@ int main(int argc, char *argv[])
 
     do
     {
+        printf("=================================================\n");
         redraw();
 
         switch (event.type)
