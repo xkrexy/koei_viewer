@@ -165,8 +165,8 @@ void read_json()
         size = ftell(fp);
         fseek(fp, 0L, SEEK_SET);
 
-        char *json = new char[size];
-        memset(json, 0, size);
+        char *json = new char[size+16];
+        memset(json, 0, size+16);
         fread(json, 1, size, fp);
 
         d.Parse(json);
